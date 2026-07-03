@@ -6,9 +6,5 @@
   "scripts": {
     "build": "spago build",
     "lint": "spago build"
-  },
-  "devDependencies": {
-    "purescript": "0.15.15",
-    "spago": "1.0.4"
   }
 }

@@ -4,6 +4,14 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    purescript-overlay = {
+      url = "github:paolino/purescript-overlay/fix/remove-nodePackages";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    mkSpagoDerivation = {
+      url = "github:jeslie0/mkSpagoDerivation";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -11,14 +19,52 @@
       self,
       nixpkgs,
       flake-utils,
+      purescript-overlay,
+      mkSpagoDerivation,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
       let
-        pkgs = nixpkgs.legacyPackages.${system};
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [
+            mkSpagoDerivation.overlays.default
+            purescript-overlay.overlays.default
+          ];
+        };
         hp = pkgs.haskellPackages;
 
         riptide-hs = hp.callCabal2nix "riptide" ./. { };
+        frontendSrc = ./frontend;
+        frontendNodeModules = pkgs.importNpmLock.buildNodeModules {
+          npmRoot = frontendSrc;
+          nodejs = pkgs.nodejs_22;
+        };
+
+        frontend = pkgs.mkSpagoDerivation {
+          pname = "riptide-frontend";
+          version = "0.0.0";
+          src = frontendSrc;
+          spagoYaml = "${frontendSrc}/spago.yaml";
+          spagoLock = "${frontendSrc}/spago.lock";
+          nativeBuildInputs = [
+            pkgs.esbuild
+            pkgs.nodejs_22
+            pkgs.purs
+            pkgs.spago-unstable
+          ];
+          buildPhase = ''
+            ln -s ${frontendNodeModules}/node_modules node_modules
+            spago bundle --offline --module Main
+            mv index.js dist/index.js
+          '';
+          installPhase = ''
+            mkdir -p $out
+            substitute dist/index.html $out/index.html \
+              --replace-fail "../src/bootstrap.js" "./index.js"
+            cp dist/index.js $out/index.js
+          '';
+        };
 
         # GHC whose package DB exposes tidal — hint interprets track text
         # against this at runtime (see Riptide.Eval).
@@ -42,6 +88,7 @@
         packages.default = riptide;
         packages.riptide = riptide;
         packages.riptide-unwrapped = riptide-hs;
+        packages.frontend = frontend;
 
         devShells.default = hp.shellFor {
           packages = _: [ riptide-hs ];
@@ -56,6 +103,20 @@
             pkgs.nixfmt
             pkgs.shellcheck
           ];
+        };
+        devShells.frontend = pkgs.mkShell {
+          packages = [
+            pkgs.esbuild
+            pkgs.just
+            pkgs.nodejs_22
+            pkgs.purescript-language-server
+            pkgs.purs
+            pkgs.purs-tidy-bin.purs-tidy-0_10_0
+            pkgs.spago-unstable
+          ];
+          shellHook = ''
+            cd frontend
+          '';
         };
       }
     );
