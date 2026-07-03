@@ -1,10 +1,10 @@
 # Issue 7 Tasks
 
 ## Slice 1 — Pure DnD Reducers
-- [ ] T007-S1 Add reducer tests for track reorder and cell moves.
-- [ ] T007-S1 Implement/export `moveTrack` and `moveCell`.
-- [ ] T007-S1 Run focused frontend tests and `./gate.sh`.
-- [ ] T007-S1 Commit `feat(frontend): add drag reorder reducers`.
+- [x] T007-S1 Add reducer tests for track reorder and cell moves.
+- [x] T007-S1 Implement/export `moveTrack` and `moveCell`.
+- [x] T007-S1 Run focused frontend tests and `./gate.sh`.
+- [x] T007-S1 Commit `feat(frontend): add drag reorder reducers`.
 
 ## Slice 2 — DnD View Wiring
 - [ ] T007-S2 Add drag/over actions and handlers in `Riptide.App`.
