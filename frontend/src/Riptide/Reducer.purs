@@ -16,7 +16,9 @@ module Riptide.Reducer
   , editCode
   , endResizeScore
   , hush
+  , moveCell
   , moveLoop
+  , moveTrack
   , newSong
   , newToolbox
   , onSongName
@@ -58,7 +60,7 @@ import Data.Int as Int
 import Data.Maybe (Maybe(..), fromMaybe)
 import Riptide.Action (ControlKey(..))
 import Riptide.Helpers (effectiveSelected, normalizeScore)
-import Riptide.Model (App, Block, BlockId, CellId, Page(..), Song, SongId, Toolbox, ToolboxId, Track, TrackId, defaultBlock, defaultCell, defaultSong, defaultToolbox, defaultTrack, totalBars)
+import Riptide.Model (App, Block, BlockId, Cell, CellId, Page(..), Song, SongId, Toolbox, ToolboxId, Track, TrackId, defaultBlock, defaultCell, defaultSong, defaultToolbox, defaultTrack, totalBars)
 import Riptide.Validation (valid)
 
 type DuplicateSongIds =
@@ -161,6 +163,62 @@ removeCell trackId cellId =
           , selected = clearIf cellId track.selected
           }
     )
+
+moveTrack :: TrackId -> TrackId -> App -> App
+moveTrack fromTrackId toTrackId
+  | fromTrackId == toTrackId = identity
+  | otherwise =
+      mapCurrentSong \song ->
+        case Array.find (_.id >>> (_ == fromTrackId)) song.tracks of
+          Just moved ->
+            let
+              withoutMoved = Array.filter (_.id >>> (_ /= fromTrackId)) song.tracks
+            in
+              if Array.any (_.id >>> (_ == toTrackId)) withoutMoved then
+                song { tracks = insertBefore toTrackId moved withoutMoved }
+              else
+                song
+          Nothing -> song
+
+moveCell :: TrackId -> CellId -> TrackId -> Maybe CellId -> App -> App
+moveCell fromTrackId cellId toTrackId maybeToCellId =
+  mapCurrentSong \song ->
+    if fromTrackId == toTrackId then
+      song { tracks = map reorderWithin song.tracks }
+    else
+      case findCell fromTrackId song.tracks of
+        Just moved ->
+          if Array.any (_.id >>> (_ == toTrackId)) song.tracks then
+            song { tracks = map (moveAcross moved) song.tracks }
+          else
+            song
+        Nothing -> song
+  where
+  findCell trackId tracks =
+    Array.find (_.id >>> (_ == trackId)) tracks >>= \track ->
+      Array.find (_.id >>> (_ == cellId)) track.cells
+
+  reorderWithin track
+    | track.id /= fromTrackId = track
+    | otherwise =
+        case Array.find (_.id >>> (_ == cellId)) track.cells of
+          Just moved ->
+            let
+              withoutMoved = Array.filter (_.id >>> (_ /= cellId)) track.cells
+            in
+              track { cells = insertCell maybeToCellId moved withoutMoved }
+          Nothing -> track
+
+  moveAcross moved track
+    | track.id == fromTrackId =
+        track
+          { cells = Array.filter (_.id >>> (_ /= cellId)) track.cells
+          , active = clearIf cellId track.active
+          , selected = clearIf cellId track.selected
+          }
+    | track.id == toTrackId =
+        track { cells = insertCell maybeToCellId moved track.cells }
+    | otherwise = track
 
 newSong :: SongId -> App -> App
 newSong songId app =
@@ -491,6 +549,18 @@ clearIf id value =
 insertAfter :: forall a. Int -> a -> Array a -> Array a
 insertAfter ix value xs =
   Array.take (ix + 1) xs <> [ value ] <> Array.drop (ix + 1) xs
+
+insertBefore :: forall r. String -> { id :: String | r } -> Array { id :: String | r } -> Array { id :: String | r }
+insertBefore id value xs =
+  case Array.findIndex (_.id >>> (_ == id)) xs of
+    Just ix -> Array.take ix xs <> [ value ] <> Array.drop ix xs
+    Nothing -> xs <> [ value ]
+
+insertCell :: Maybe CellId -> Cell -> Array Cell -> Array Cell
+insertCell maybeCellId cell cells =
+  case maybeCellId of
+    Just toCellId -> insertBefore toCellId cell cells
+    Nothing -> cells <> [ cell ]
 
 nextHue :: Array Track -> Int
 nextHue tracks =

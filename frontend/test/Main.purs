@@ -144,6 +144,34 @@ main =
         addedTrack.hue `shouldEqual` 285
         length addedTrack.score `shouldEqual` totalBars
 
+      it "moves a track before another track in the current song" do
+        let
+          moved = Reducer.moveTrack "t3" "t1" appWithSong
+
+        map (_.id) (currentTracks moved) `shouldEqual` [ "t3", "t1", "t2" ]
+        map (_.id) (trackById "t3" moved).cells `shouldEqual` [ "c4", "c5" ]
+
+      it "moves a cell before another cell on the same track" do
+        let
+          moved = Reducer.moveCell "t1" "c2" "t1" (Just "c1") appWithSong
+          track' = trackById "t1" moved
+
+        map (_.id) track'.cells `shouldEqual` [ "c2", "c1" ]
+        track'.active `shouldEqual` Just "c1"
+        track'.selected `shouldEqual` Just "c2"
+
+      it "moves a cell across tracks, preserves its id, and clears source active refs" do
+        let
+          moved = Reducer.moveCell "t2" "c3" "t1" Nothing appWithSong
+          source = trackById "t2" moved
+          dest = trackById "t1" moved
+
+        map (_.id) dest.cells `shouldEqual` [ "c1", "c2", "c3" ]
+        map (_.id) source.cells `shouldEqual` []
+        source.active `shouldEqual` Nothing
+        source.selected `shouldEqual` Nothing
+        dest.selected `shouldEqual` Just "c2"
+
       it "applies only valid toolbox blocks" do
         let
           once = Reducer.applyBlock "b1" appWithToolbox
