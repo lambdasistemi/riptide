@@ -11,15 +11,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Build gate — populates the nix store / cache (build + tests + dev shell)
+  # Build gate — populates the shared nix store (build + tests + dev shell)
   build-gate:
     name: Build Gate
-    runs-on: ubuntu-latest
+    runs-on: nixos
     steps:
       - uses: actions/checkout@v4
-      - uses: paolino/dev-assets/setup-nix@v0.0.1
+      - uses: cachix/cachix-action@v15
         with:
-          cachix-auth-token: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+          name: paolino
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - name: Build all derivations
         run: >-
           nix build --quiet
@@ -29,23 +30,25 @@ jobs:
   format:
     name: Check code formatting
     needs: build-gate
-    runs-on: ubuntu-latest
+    runs-on: nixos
     steps:
       - uses: actions/checkout@v4
-      - uses: paolino/dev-assets/setup-nix@v0.0.1
+      - uses: cachix/cachix-action@v15
         with:
-          cachix-auth-token: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+          name: paolino
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - name: Check formatting
         run: nix develop --quiet -c just format-check
 
   hlint:
     name: HLint
     needs: build-gate
-    runs-on: ubuntu-latest
+    runs-on: nixos
     steps:
       - uses: actions/checkout@v4
-      - uses: paolino/dev-assets/setup-nix@v0.0.1
+      - uses: cachix/cachix-action@v15
         with:
-          cachix-auth-token: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+          name: paolino
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - name: Run HLint
         run: nix develop --quiet -c just hlint
