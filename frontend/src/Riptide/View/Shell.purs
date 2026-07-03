@@ -20,6 +20,10 @@ type ShellActions action =
   , hush :: action
   , newSong :: action
   , newToolbox :: action
+  , exportSong :: action
+  , importSong :: action
+  , exportToolbox :: action
+  , importToolbox :: action
   }
 
 render
@@ -45,7 +49,20 @@ render actions app child =
     , HH.div [ HP.classes [ HH.ClassName "rt-actions" ] ]
         [ HH.button [ HE.onClick \_ -> actions.newSong ] [ HH.text "New song" ]
         , HH.button [ HE.onClick \_ -> actions.newToolbox ] [ HH.text "New toolbox" ]
+        , HH.div [ HP.classes [ HH.ClassName "rt-action-group" ] ]
+            [ HH.button [ HE.onClick \_ -> actions.exportSong ] [ HH.text "Export song" ]
+            , HH.button [ HE.onClick \_ -> actions.importSong ] [ HH.text "Import song" ]
+            ]
+        , HH.div [ HP.classes [ HH.ClassName "rt-action-group" ] ]
+            [ HH.button [ HE.onClick \_ -> actions.exportToolbox ] [ HH.text "Export toolbox" ]
+            , HH.button [ HE.onClick \_ -> actions.importToolbox ] [ HH.text "Import toolbox" ]
+            ]
         ]
+    , case app.toast of
+        Just message ->
+          HH.div [ HP.classes [ HH.ClassName "rt-toast" ], HP.attr (HH.AttrName "role") "status" ] [ HH.text message ]
+        Nothing ->
+          HH.text ""
     , child
     ]
 
