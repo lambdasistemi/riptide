@@ -13,10 +13,10 @@
 - [x] T007-S2 Browser smoke drag handles and commit.
 
 ## Slice 3 — Import/Export Effects And Toasts
-- [ ] T007-S3 Add file/blob FFI module and PureScript wrappers.
-- [ ] T007-S3 Wire song/toolbox import/export actions through pure transforms.
-- [ ] T007-S3 Render import/export controls and transient toast.
-- [ ] T007-S3 Browser smoke round-trip and commit.
+- [x] T007-S3 Add file/blob FFI module and PureScript wrappers.
+- [x] T007-S3 Wire song/toolbox import/export actions through pure transforms.
+- [x] T007-S3 Render import/export controls and transient toast.
+- [x] T007-S3 Browser smoke round-trip and commit.
 
 ## Slice 4 — Serve And Pages
 - [ ] T007-S4 Add `serve`/`dev` recipe for built `dist/`.

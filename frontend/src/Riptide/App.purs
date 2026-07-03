@@ -11,10 +11,12 @@ import Data.Traversable (traverse)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Riptide.Action (ControlKey)
+import Riptide.ImportExport as ImportExport
 import Riptide.Model (App, BlockId, CellId, DropTarget, Page(..), Song, SongId, Toolbox, ToolboxId, TrackId)
 import Riptide.Reducer as Reducer
 import Riptide.Validation (valid)
 import Riptide.View.Definitions as Definitions
+import Riptide.View.Files as Files
 import Riptide.View.Id (mintId)
 import Riptide.View.Playhead as Playhead
 import Riptide.View.Seed (seedApp)
@@ -32,6 +34,13 @@ data Action
   | Hush
   | NewSong
   | NewToolbox
+  | ExportSong
+  | ImportSong
+  | ExportToolbox
+  | ImportToolbox
+  | SongFilePicked H.SubscriptionId Files.FileResult
+  | ToolboxFilePicked H.SubscriptionId Files.FileResult
+  | ClearToast H.SubscriptionId String
   | OpenSong SongId
   | OpenToolbox ToolboxId
   | RenameSong SongId String
@@ -98,6 +107,10 @@ shellActions =
   , hush: Hush
   , newSong: NewSong
   , newToolbox: NewToolbox
+  , exportSong: ExportSong
+  , importSong: ImportSong
+  , exportToolbox: ExportToolbox
+  , importToolbox: ImportToolbox
   }
 
 songActions :: Song.SongActions Action
@@ -178,6 +191,56 @@ handleAction = case _ of
   NewToolbox -> do
     toolboxId <- H.liftEffect (mintId "tb")
     H.modify_ (Reducer.newToolbox toolboxId)
+  ExportSong -> do
+    app <- H.get
+    case app.currentSongId >>= \songId -> songById songId app of
+      Just song -> do
+        H.liftEffect (Files.downloadSongJson (fileName song.name "song") (ImportExport.exportSong song))
+        showToast ("Exported song " <> song.name)
+      Nothing ->
+        showToast "No current song to export"
+  ImportSong ->
+    H.subscribe' \subscriptionId -> Files.pickTextFileEmitter (SongFilePicked subscriptionId)
+  ExportToolbox -> do
+    app <- H.get
+    case app.currentToolboxId >>= \toolboxId -> toolboxById toolboxId app of
+      Just toolbox -> do
+        H.liftEffect (Files.downloadToolboxJson (fileName toolbox.name "toolbox") (ImportExport.exportToolbox toolbox))
+        showToast ("Exported toolbox " <> toolbox.name)
+      Nothing ->
+        showToast "No current toolbox to export"
+  ImportToolbox ->
+    H.subscribe' \subscriptionId -> Files.pickTextFileEmitter (ToolboxFilePicked subscriptionId)
+  SongFilePicked subscriptionId result -> do
+    H.unsubscribe subscriptionId
+    if result.ok then
+      case Array.index (Files.parseSongFile result.value) 0 of
+        Just exported -> do
+          songId <- H.liftEffect (mintId "s")
+          trackIds <- traverse (const (H.liftEffect (mintId "t"))) exported.tracks
+          cellIds <- traverse (const (H.liftEffect (mintId "c"))) (Array.concatMap _.cells exported.tracks)
+          H.modify_ (ImportExport.importSong songId trackIds cellIds exported)
+          showToast ("Imported song " <> exported.name)
+        Nothing ->
+          showToast "Could not import song JSON"
+    else
+      showToast result.value
+  ToolboxFilePicked subscriptionId result -> do
+    H.unsubscribe subscriptionId
+    if result.ok then
+      case Array.index (Files.parseToolboxFile result.value) 0 of
+        Just exported -> do
+          toolboxId <- H.liftEffect (mintId "tb")
+          blockIds <- traverse (const (H.liftEffect (mintId "b"))) exported.blocks
+          H.modify_ (ImportExport.importToolbox toolboxId blockIds exported)
+          showToast ("Imported toolbox " <> exported.name)
+        Nothing ->
+          showToast "Could not import toolbox JSON"
+    else
+      showToast result.value
+  ClearToast subscriptionId message -> do
+    H.unsubscribe subscriptionId
+    H.modify_ \app -> if app.toast == Just message then app { toast = Nothing } else app
   OpenSong songId ->
     H.modify_ (Reducer.openSong songId)
   OpenToolbox toolboxId ->
@@ -388,3 +451,12 @@ applyDrop target app =
 clearDrag :: App -> App
 clearDrag app =
   app { drag = Nothing, over = Nothing }
+
+showToast :: forall output m. MonadAff m => String -> H.HalogenM App Action () output m Unit
+showToast message = do
+  H.modify_ \app -> app { toast = Just message }
+  H.subscribe' \subscriptionId -> Files.timeoutEmitter 2400 (ClearToast subscriptionId message)
+
+fileName :: String -> String -> String
+fileName name kind =
+  name <> ".riptide-" <> kind <> ".json"
