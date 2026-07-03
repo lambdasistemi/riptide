@@ -2,13 +2,13 @@
 
 ## Slice 1 — Model, Validation, and Helpers
 
-- [ ] T004-S1 Define the Riptide domain/state modules and constants.
-- [ ] T004-S1 Implement pure validation, defined-name parsing, cascade, selected
+- [X] T004-S1 Define the Riptide domain/state modules and constants.
+- [X] T004-S1 Implement pure validation, defined-name parsing, cascade, selected
       fallback, and score/id helper functions.
-- [ ] T004-S1 Add `spec`/QuickCheck test dependencies and focused tests for the
+- [X] T004-S1 Add `spec`/QuickCheck test dependencies and focused tests for the
       helper layer.
-- [ ] T004-S1 Wire `frontend/justfile` and CI so frontend tests run.
-- [ ] T004-S1 Pass `./gate.sh` and commit with the required trailer.
+- [X] T004-S1 Wire `frontend/justfile` and CI so frontend tests run.
+- [X] T004-S1 Pass `./gate.sh` and commit with the required trailer.
 
 ## Slice 2 — Reducers and Transforms
 

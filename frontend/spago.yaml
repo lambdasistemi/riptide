@@ -2,10 +2,18 @@ package:
   name: riptide-frontend
   dependencies:
     - aff
+    - arrays
     - console
     - effect
+    - foldable-traversable
     - halogen
+    - maybe
     - prelude
+    - strings
+  test:
+    main: Test.Main
+    dependencies:
+      - spec
 workspace:
   packageSet:
     registry: 72.1.0
