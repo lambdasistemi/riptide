@@ -16,12 +16,14 @@ import Riptide.Reducer as Reducer
 import Riptide.Validation (valid)
 import Riptide.View.Definitions as Definitions
 import Riptide.View.Id (mintId)
+import Riptide.View.Playhead as Playhead
 import Riptide.View.Seed (seedApp)
 import Riptide.View.Shell as Shell
 import Riptide.View.Song as Song
 
 data Action
-  = GoSong
+  = Initialize
+  | GoSong
   | GoDefs
   | ToggleEngine
   | Hush
@@ -55,13 +57,22 @@ data Action
   | StopEdit
   | FocusCell CellId
   | BlurCell CellId
+  | StartPaint TrackId Int
+  | PaintEnter TrackId Int
+  | StopPaint
+  | TogglePlay
+  | ToggleLoop
+  | SetLoopStart String
+  | SetLoopEnd String
+  | MoveLoop Int
+  | PlayheadTick H.SubscriptionId Number
 
 component :: forall query input output m. MonadAff m => H.Component query input output m
 component =
   H.mkComponent
     { initialState: const seedApp
     , render
-    , eval: H.mkEval H.defaultEval { handleAction = handleAction }
+    , eval: H.mkEval H.defaultEval { handleAction = handleAction, initialize = Just Initialize }
     }
 
 render :: forall slots m. App -> H.ComponentHTML Action slots m
@@ -102,6 +113,14 @@ songActions =
   , stopEdit: StopEdit
   , focusCell: FocusCell
   , blurCell: BlurCell
+  , startPaint: StartPaint
+  , paintEnter: PaintEnter
+  , stopPaint: StopPaint
+  , togglePlay: TogglePlay
+  , toggleLoop: ToggleLoop
+  , setLoopStart: SetLoopStart
+  , setLoopEnd: SetLoopEnd
+  , moveLoop: MoveLoop
   }
 
 definitionsActions :: Definitions.DefinitionsActions Action
@@ -123,6 +142,9 @@ definitionsActions =
 
 handleAction :: forall output m. MonadAff m => Action -> H.HalogenM App Action () output m Unit
 handleAction = case _ of
+  Initialize -> do
+    app <- H.get
+    when app.playing startPlayhead
   GoSong ->
     H.modify_ \app ->
       case app.currentSongId of
@@ -224,6 +246,57 @@ handleAction = case _ of
   BlurCell cellId ->
     H.modify_ \app ->
       if app.focusCell == Just cellId then app { focusCell = Nothing } else app
+  StartPaint trackId bar ->
+    H.modify_ (Reducer.startPaint trackId bar)
+  PaintEnter trackId bar ->
+    H.modify_ (Reducer.paintEnter trackId bar)
+  StopPaint ->
+    H.modify_ Reducer.stopPaint
+  TogglePlay -> do
+    H.modify_ Reducer.togglePlay
+    app <- H.get
+    when app.playing startPlayhead
+  ToggleLoop ->
+    H.modify_ Reducer.toggleLoop
+  SetLoopStart raw ->
+    case Int.fromString raw of
+      Just value -> H.modify_ (Reducer.setLoopStart value)
+      Nothing -> pure unit
+  SetLoopEnd raw ->
+    case Int.fromString raw of
+      Just value -> H.modify_ (Reducer.setLoopEnd value)
+      Nothing -> pure unit
+  MoveLoop delta ->
+    H.modify_ (Reducer.moveLoop delta)
+  PlayheadTick subscriptionId dt -> do
+    app <- H.get
+    if app.playing then
+      H.modify_ (advancePlayhead dt)
+    else
+      H.unsubscribe subscriptionId
+
+startPlayhead :: forall output m. MonadAff m => H.HalogenM App Action () output m Unit
+startPlayhead =
+  H.subscribe' \subscriptionId ->
+    Playhead.animationFrameEmitter (PlayheadTick subscriptionId)
+
+advancePlayhead :: Number -> App -> App
+advancePlayhead dt app =
+  let
+    result =
+      Playhead.step
+        { playhead: app.playhead
+        , dtSeconds: dt
+        , loopOn: app.loopOn
+        , loopStart: app.loopStart
+        , loopEnd: app.loopEnd
+        , lastBar: Int.floor app.playhead
+        }
+    moved = app { playhead = result.playhead }
+  in
+    case result.changedBar of
+      Just bar -> Reducer.applyAutomation bar moved
+      Nothing -> moved
 
 songById :: SongId -> App -> Maybe Song
 songById songId app =
