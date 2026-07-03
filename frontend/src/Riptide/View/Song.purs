@@ -11,9 +11,10 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Riptide.Action (ControlKey(..))
-import Riptide.Model (App, Cell, CellId, EditingTarget, Song, SongId, Track, TrackId)
+import Riptide.Model (App, Cell, CellId, DropTarget, EditingTarget, Song, SongId, Track, TrackId)
 import Riptide.Validation (ValidationResult, valid)
 import Riptide.View.Score as Score
+import Web.HTML.Event.DragEvent (DragEvent)
 
 type SongActions action =
   { newSong :: action
@@ -38,6 +39,11 @@ type SongActions action =
   , startPaint :: TrackId -> Int -> action
   , paintEnter :: TrackId -> Int -> action
   , stopPaint :: action
+  , startTrackDrag :: TrackId -> action
+  , startCellDrag :: TrackId -> CellId -> action
+  , dragOver :: DropTarget -> DragEvent -> action
+  , dropOn :: DropTarget -> DragEvent -> action
+  , endDrag :: action
   , togglePlay :: action
   , toggleLoop :: action
   , setLoopStart :: String -> action
@@ -138,13 +144,25 @@ trackRow :: forall action slots m. SongActions action -> App -> Track -> HH.Comp
 trackRow actions app track =
   let
     confirming = app.confirm == Just ("trk:" <> track.id)
+    target = trackTarget track.id
   in
     HH.article
-      [ HP.classes [ HH.ClassName "rt-track" ]
+      [ HP.classes (trackClasses app target)
       , HP.style ("--track-hue: " <> show track.hue)
+      , HE.onDragOver (actions.dragOver target)
+      , HE.onDrop (actions.dropOn target)
       ]
       [ HH.div [ HP.classes [ HH.ClassName "rt-track-gutter" ] ]
-          [ HH.input
+          [ HH.button
+              [ HP.type_ HP.ButtonButton
+              , HP.title "Drag track"
+              , HP.classes [ HH.ClassName "rt-drag-handle", HH.ClassName "rt-track-grip" ]
+              , HP.draggable true
+              , HE.onDragStart \_ -> actions.startTrackDrag track.id
+              , HE.onDragEnd \_ -> actions.endDrag
+              ]
+              [ HH.text "grip" ]
+          , HH.input
               [ HP.type_ HP.InputText
               , HP.value track.name
               , HE.onValueInput (actions.renameTrack track.id)
@@ -166,7 +184,7 @@ trackRow actions app track =
               ]
           ]
       , HH.div [ HP.classes [ HH.ClassName "rt-cell-strip" ] ]
-          (map (cellTile actions app track) track.cells <> [ addCellTile actions track.id ])
+          (map (cellTile actions app track) track.cells <> [ addCellTile actions app track.id ])
       ]
 
 ctrlSlider :: forall action slots m. SongActions action -> Track -> ControlKey -> String -> Int -> HH.ComponentHTML action slots m
@@ -193,11 +211,24 @@ cellTile actions app track cell =
     editing = isEditing "cell" cell.id app.editing || app.focusCell == Just cell.id
     canLaunch = app.engine && result.valid
     confirming = app.confirm == Just ("cell:" <> cell.id)
+    target = cellTarget track.id cell.id
   in
     HH.div
-      [ HP.classes (cellClasses result active selected editing) ]
+      [ HP.classes (cellClasses app target result active selected editing)
+      , HE.onDragOver (actions.dragOver target)
+      , HE.onDrop (actions.dropOn target)
+      ]
       [ HH.div [ HP.classes [ HH.ClassName "rt-cell-head" ] ]
           [ HH.button
+              [ HP.type_ HP.ButtonButton
+              , HP.title "Drag cell"
+              , HP.classes [ HH.ClassName "rt-drag-handle", HH.ClassName "rt-cell-grip" ]
+              , HP.draggable true
+              , HE.onDragStart \_ -> actions.startCellDrag track.id cell.id
+              , HE.onDragEnd \_ -> actions.endDrag
+              ]
+              [ HH.text "grip" ]
+          , HH.button
               [ HP.type_ HP.ButtonButton
               , HP.classes [ HH.ClassName "rt-cell-select" ]
               , HE.onClick \_ -> actions.selectCell track.id cell.id
@@ -231,24 +262,56 @@ cellTile actions app track cell =
             HH.text ""
       ]
 
-addCellTile :: forall action slots m. SongActions action -> TrackId -> HH.ComponentHTML action slots m
-addCellTile actions trackId =
+addCellTile :: forall action slots m. SongActions action -> App -> TrackId -> HH.ComponentHTML action slots m
+addCellTile actions app trackId =
+  let
+    target = appendTarget trackId
+  in
   HH.button
     [ HP.type_ HP.ButtonButton
-    , HP.classes [ HH.ClassName "rt-cell-add" ]
+    , HP.classes
+        [ HH.ClassName "rt-cell-add"
+        , if overTarget target app.over then HH.ClassName "is-cell-append-drop" else HH.ClassName "is-not-cell-append-drop"
+        ]
     , HE.onClick \_ -> actions.addCell trackId
+    , HE.onDragOver (actions.dragOver target)
+    , HE.onDrop (actions.dropOn target)
     ]
     [ HH.text "+ cell" ]
 
-cellClasses :: ValidationResult -> Boolean -> Boolean -> Boolean -> Array HH.ClassName
-cellClasses result active selected editing =
+trackClasses :: App -> DropTarget -> Array HH.ClassName
+trackClasses app target =
+  [ HH.ClassName "rt-track"
+  , if overTarget target app.over then HH.ClassName "is-track-drop-before" else HH.ClassName "is-not-track-drop"
+  ]
+
+cellClasses :: App -> DropTarget -> ValidationResult -> Boolean -> Boolean -> Boolean -> Array HH.ClassName
+cellClasses app target result active selected editing =
   [ HH.ClassName "rt-cell"
   , if result.empty then HH.ClassName "is-empty" else HH.ClassName "has-text-idle"
   , if selected then HH.ClassName "is-selected-armed" else HH.ClassName "is-unselected"
   , if active then HH.ClassName "is-active-playing" else HH.ClassName "is-stopped"
   , if not result.empty && not result.valid then HH.ClassName "is-invalid" else HH.ClassName "is-valid"
   , if editing then HH.ClassName "is-being-edited" else HH.ClassName "is-not-editing"
+  , if overTarget target app.over then HH.ClassName "is-cell-drop-before" else HH.ClassName "is-not-cell-drop"
   ]
+
+trackTarget :: TrackId -> DropTarget
+trackTarget trackId =
+  { kind: "track", trackId, cellId: Nothing }
+
+cellTarget :: TrackId -> CellId -> DropTarget
+cellTarget trackId cellId =
+  { kind: "cell", trackId, cellId: Just cellId }
+
+appendTarget :: TrackId -> DropTarget
+appendTarget trackId =
+  { kind: "cell-append", trackId, cellId: Nothing }
+
+overTarget :: DropTarget -> Maybe DropTarget -> Boolean
+overTarget target =
+  maybe false \over ->
+    over.kind == target.kind && over.trackId == target.trackId && over.cellId == target.cellId
 
 cellStateLabel :: ValidationResult -> Boolean -> Boolean -> Boolean -> String
 cellStateLabel result active selected editing
