@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: oklch(0.15 0.008 260);
+    color: oklch(0.9 0.006 260);
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    -webkit-font-smoothing: antialiased;
+  }
+  textarea { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  @keyframes rt-pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
+  ::-webkit-scrollbar { height: 10px; width: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: oklch(0.32 0.01 260); border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background: oklch(0.4 0.01 260); }
+  .rt-range { -webkit-appearance:none; appearance:none; flex:1; min-width:0; height:4px; border-radius:3px; background:oklch(0.28 0.01 260); outline:none; cursor:pointer; }
+  .rt-range::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:11px; height:11px; border-radius:50%; background:oklch(0.86 0.008 260); border:1px solid oklch(0.2 0.01 260); cursor:grab; }
+  .rt-range::-webkit-slider-thumb:active { cursor:grabbing; }
+  .rt-range::-moz-range-thumb { width:10px; height:10px; border-radius:50%; background:oklch(0.86 0.008 260); border:1px solid oklch(0.2 0.01 260); cursor:grab; }
+</style>
+</helmet>
+
+<div style="display:flex; flex-direction:column; height:100vh; width:100%; background: oklch(0.15 0.008 260); overflow:hidden;">
+
+  <!-- ============ TOP BAR ============ -->
+  <header style="display:flex; align-items:center; justify-content:space-between; height:56px; flex:none; padding:0 18px; background: oklch(0.18 0.01 260); border-bottom:1px solid oklch(0.26 0.01 260); z-index:5;">
+    <div style="display:flex; align-items:center; gap:22px;">
+      <div style="display:flex; align-items:baseline; gap:9px;">
+        <div style="width:10px; height:10px; border-radius:2px; background: oklch(0.72 0.16 200); box-shadow:0 0 10px oklch(0.72 0.16 200 / 0.7); transform: rotate(45deg);"></div>
+        <span style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:17px; letter-spacing:0.5px; color: oklch(0.94 0.006 260);">riptide</span>
+        <span style="font-size:10px; color: oklch(0.5 0.01 260); letter-spacing:1px;">TIDALCYCLES</span>
+      </div>
+      <div style="display:flex; gap:3px; background:oklch(0.14 0.01 260); border:1px solid oklch(0.26 0.01 260); border-radius:9px; padding:3px;">
+        <button onClick="{{ goSong }}" style="{{ songTabStyle }}">Song</button>
+        <button onClick="{{ goDefs }}" style="{{ defsTabStyle }}">Definitions</button>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button onClick="{{ goDefs }}" title="Live shared scope — click to manage" style="{{ scopeChipStyle }}">
+        <span style="font-size:8px; letter-spacing:1px; color:oklch(0.5 0.01 260);">SCOPE</span>
+        <span style="{{ scopeDotStyle }}"></span>
+        <span>{{ scopeName }}</span>
+      </button>
+      <div style="width:1px; height:22px; background:oklch(0.28 0.01 260);"></div>
+      <button onClick="{{ toggleEngine }}" title="Toggle audio engine" style="{{ engineBtnStyle }}">
+        <span style="{{ engineDotStyle }}"></span>
+        <span>{{ engineLabel }}</span>
+      </button>
+      <span style="font-size:11px; color: oklch(0.5 0.01 260); min-width:56px; text-align:right;">{{ activeCountLabel }}</span>
+      <button onClick="{{ hush }}" title="Stop everything" style="{{ hushBtnStyle }}">
+        <span style="width:11px; height:11px; background: currentColor; border-radius:2px; display:inline-block;"></span>
+        <span style="letter-spacing:1.5px;">HUSH</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ SONG PAGE ============ -->
+  <div style="{{ songPageStyle }}">
+
+    <!-- songs rail (collapsed strip) -->
+    <aside style="{{ songRailMiniStyle }}">
+      <button onClick="{{ toggleSongRail }}" title="Expand songs" style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:7px; border:1px solid oklch(0.3 0.01 260); background:oklch(0.2 0.01 260); color:oklch(0.7 0.01 260); font-size:13px; cursor:pointer;" style-hover="color:oklch(0.9 0.01 260);">›</button>
+      <div style="writing-mode:vertical-rl; font-size:9px; font-weight:700; letter-spacing:1.5px; color:oklch(0.5 0.01 260); margin-top:4px;">SONGS</div>
+      <button onClick="{{ newSong }}" title="New song" style="width:28px; height:28px; margin-top:auto; display:flex; align-items:center; justify-content:center; border-radius:7px; border:1px solid oklch(0.3 0.01 260); background:oklch(0.2 0.01 260); color:oklch(0.7 0.01 260); font-size:16px; cursor:pointer;" style-hover="color:oklch(0.9 0.01 260);">+</button>
+    </aside>
+
+    <!-- songs rail (expanded) -->
+    <aside style="{{ songRailFullStyle }}">
+      <div style="display:flex; align-items:center; justify-content:space-between; height:42px; flex:none; padding:0 8px 0 14px; border-bottom:1px solid oklch(0.22 0.01 260);">
+        <span style="font-size:10px; font-weight:700; letter-spacing:1.5px; color:oklch(0.58 0.01 260);">SONGS</span>
+        <div style="display:flex; align-items:center; gap:4px;">
+          <button onClick="{{ triggerSongImport }}" title="Import song (.json)" style="font-size:8px; letter-spacing:0.5px; padding:3px 6px; border-radius:5px; border:1px solid oklch(0.3 0.01 260); background:transparent; color:oklch(0.6 0.01 260); cursor:pointer;" style-hover="color:oklch(0.85 0.01 260);">IMPORT</button>
+          <button onClick="{{ exportSong }}" title="Export current song" style="font-size:8px; letter-spacing:0.5px; padding:3px 6px; border-radius:5px; border:1px solid oklch(0.3 0.01 260); background:transparent; color:oklch(0.6 0.01 260); cursor:pointer;" style-hover="color:oklch(0.85 0.01 260);">EXPORT</button>
+          <button onClick="{{ toggleSongRail }}" title="Collapse songs" style="width:24px; height:24px; display:flex; align-items:center; justify-content:center; border-radius:6px; border:none; background:transparent; color:oklch(0.5 0.01 260); font-size:13px; cursor:pointer;" style-hover="background:oklch(0.24 0.01 260); color:oklch(0.85 0.01 260);">‹</button>
+        </div>
+      </div>
+      <div style="flex:1; overflow:auto; padding:8px;">
+        <sc-for list="{{ songsVM }}" as="s" hint-placeholder-count="2">
+          <div style="{{ s.rowStyle }}">
+            <div style="{{ s.accentStyle }}"></div>
+            <div style="flex:1; min-width:0; cursor:pointer;" onClick="{{ s.onOpen }}">
+              <sc-if value="{{ s.editing }}" hint-placeholder-val="{{ false }}">
+                <input value="{{ s.name }}" onInput="{{ s.onNameInput }}" onBlur="{{ s.onNameBlur }}" onKeyDown="{{ s.onNameKey }}" spellcheck="false" style="width:100%; background:oklch(0.13 0.01 260); border:1px solid oklch(0.4 0.02 200); border-radius:4px; outline:none; color:oklch(0.92 0.006 260); font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13px; padding:2px 5px;" />
+              </sc-if>
+              <sc-if value="{{ s.notEditing }}" hint-placeholder-val="{{ true }}">
+                <div style="{{ s.nameStyle }}">{{ s.name }}</div>
+                <div style="font-size:9.5px; color:oklch(0.5 0.01 260); margin-top:2px;">{{ s.meta }}</div>
+              </sc-if>
+            </div>
+            <div style="display:flex; align-items:center; gap:1px;">
+              <button onClick="{{ s.onEdit }}" title="Rename" style="width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:5px; border:none; background:transparent; color:oklch(0.5 0.01 260); font-size:11px; cursor:pointer;" style-hover="background:oklch(0.24 0.01 260); color:oklch(0.85 0.01 260);">✎</button>
+              <button onClick="{{ s.onDuplicate }}" title="Duplicate" style="width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:5px; border:none; background:transparent; color:oklch(0.5 0.01 260); font-size:12px; cursor:pointer;" style-hover="background:oklch(0.24 0.01 260); color:oklch(0.85 0.01 260);">⧉</button>
+              <button onClick="{{ s.onDelete }}" title="{{ s.deleteTitle }}" style="{{ s.deleteStyle }}">{{ s.deleteGlyph }}</button>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ songsEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="margin:24px 10px; text-align:center; color:oklch(0.5 0.01 260); font-size:11px; line-height:1.6;">
+            <div style="font-size:22px; opacity:0.4; margin-bottom:6px;">♪</div>
+            No songs yet.<br />Create one to start a grid.
+          </div>
+        </sc-if>
+      </div>
+      <div style="flex:none; padding:10px; border-top:1px solid oklch(0.22 0.01 260);">
+        <button onClick="{{ newSong }}" style="width:100%; display:flex; align-items:center; justify-content:center; gap:7px; height:34px; background:oklch(0.21 0.01 260); color:oklch(0.78 0.01 260); border:1px solid oklch(0.3 0.01 260); border-radius:7px; font-family:'Space Grotesk',sans-serif; font-size:12px; cursor:pointer;" style-hover="background:oklch(0.25 0.01 260);">
+          <span style="font-size:15px; line-height:1;">+</span> New song
+        </button>
+      </div>
+      <input type="file" accept="application/json,.json" ref="{{ songFileRef }}" onChange="{{ onImportSongFile }}" style="display:none;" />
+    </aside>
+
+    <!-- song main -->
+    <div style="flex:1; min-width:0; display:flex; flex-direction:column;">
+      <!-- has-song -->
+      <div style="{{ hasSongStyle }}">
+        <div style="display:flex; align-items:center; justify-content:space-between; height:52px; flex:none; padding:0 22px; background:oklch(0.163 0.009 260); border-bottom:1px solid oklch(0.24 0.01 260);">
+          <div style="display:flex; align-items:baseline; gap:12px; min-width:0;">
+            <span style="font-size:9px; letter-spacing:1.5px; color:oklch(0.5 0.01 260);">SONG</span>
+            <input value="{{ songName }}" onInput="{{ onSongName }}" spellcheck="false" style="background:transparent; border:none; outline:none; color:oklch(0.95 0.006 260); font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:18px; padding:0; min-width:40px;" />
+            <span style="font-size:11px; color:oklch(0.52 0.01 260);">{{ songMeta }}</span>
+          </div>
+        </div>
+
+        <!-- ===== EXISTING LAUNCH GRID (unchanged) ===== -->
+        <main style="flex:1; overflow:auto; padding:14px 18px 24px;">
+          <sc-for list="{{ tracks }}" as="track" hint-placeholder-count="4">
+            <div style="{{ track.rowStyle }}" onDragOver="{{ track.onRowDragOver }}" onDrop="{{ track.onRowDrop }}">
+
+              <div style="{{ track.gutterStyle }}">
+                <div style="{{ track.accentBarStyle }}"></div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; padding:1px 2px;">
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    <span draggable="true" onDragStart="{{ track.onDragStart }}" onDragEnd="{{ track.onDragEnd }}" title="Drag to reorder track" style="{{ track.gripStyle }}">⠿</span>
+                    <div style="flex:1; min-width:0;">
+                      <input value="{{ track.name }}" onInput="{{ track.onRename }}" spellcheck="false" style="{{ track.nameInputStyle }}" />
+                      <div style="font-size:9.5px; color: oklch(0.45 0.01 260); margin-top:1px; letter-spacing:0.5px;">{{ track.statusLabel }}</div>
+                    </div>
+                    <button onClick="{{ track.onStop }}" title="Stop this track" style="{{ track.stopBtnStyle }}">
+                      <span style="width:8px; height:8px; background: currentColor; border-radius:1.5px;"></span>
+                    </button>
+                    <button onClick="{{ track.onRemove }}" title="{{ track.removeTitle }}" style="{{ track.removeBtnStyle }}">{{ track.removeGlyph }}</button>
+                  </div>
+                  <div style="display:flex; flex-direction:column; gap:5px;">
+                    <div style="display:flex; align-items:center; gap:7px;">
+                      <span style="width:28px; font-size:8px; font-weight:500; letter-spacing:0.5px; color:oklch(0.52 0.01 260);">VOL</span>
+                      <input type="range" min="0" max="100" value="{{ track.vol }}" onInput="{{ track.onVol }}" title="Volume (gain)" class="rt-range" style="{{ track.volTrackStyle }}" />
+                      <span style="width:22px; text-align:right; font-size:9px; color:oklch(0.64 0.01 260); font-variant-numeric:tabular-nums;">{{ track.vol }}</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:7px;">
+                      <span style="width:28px; font-size:8px; font-weight:500; letter-spacing:0.5px; color:oklch(0.52 0.01 260);">FLTR</span>
+                      <input type="range" min="0" max="100" value="{{ track.flt }}" onInput="{{ track.onFlt }}" title="Low-pass filter cutoff" class="rt-range" style="{{ track.fltTrackStyle }}" />
+                      <span style="width:22px; text-align:right; font-size:9px; color:oklch(0.64 0.01 260); font-variant-numeric:tabular-nums;">{{ track.flt }}</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:7px;">
+                      <span style="width:28px; font-size:8px; font-weight:500; letter-spacing:0.5px; color:oklch(0.52 0.01 260);">DLY</span>
+                      <input type="range" min="0" max="100" value="{{ track.dly }}" onInput="{{ track.onDly }}" title="Delay send" class="rt-range" style="{{ track.dlyTrackStyle }}" />
+                      <span style="width:22px; text-align:right; font-size:9px; color:oklch(0.64 0.01 260); font-variant-numeric:tabular-nums;">{{ track.dly }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex; gap:8px; align-items:stretch;">
+                <sc-for list="{{ track.cells }}" as="cell" hint-placeholder-count="3">
+                  <div style="{{ cell.wrapStyle }}" onMouseEnter="{{ cell.onEnter }}" onMouseLeave="{{ cell.onLeave }}" onDragOver="{{ cell.onDragOver }}" onDrop="{{ cell.onDrop }}">
+                    <div style="display:flex; align-items:center; justify-content:space-between; height:13px; margin-bottom:4px;">
+                      <div style="display:flex; align-items:center; gap:5px;">
+                        <span draggable="true" onDragStart="{{ cell.onDragStart }}" onDragEnd="{{ cell.onDragEnd }}" title="Drag to move / reorder" style="{{ cell.gripStyle }}">⠿</span>
+                        <button onClick="{{ cell.onDelete }}" title="{{ cell.deleteTitle }}" style="{{ cell.deleteStyle }}">{{ cell.deleteGlyph }}</button>
+                      </div>
+                      <div style="display:flex; align-items:center; gap:7px;">
+                        <div style="{{ cell.badgeStyle }}">{{ cell.badgeText }}</div>
+                        <button onClick="{{ cell.onSelect }}" title="{{ cell.selectTitle }}" style="{{ cell.selectStyle }}"></button>
+                      </div>
+                    </div>
+                    <div style="display:flex; align-items:stretch; gap:8px;">
+                      <button onClick="{{ cell.onToggle }}" disabled="{{ cell.launchDisabled }}" title="{{ cell.launchTitle }}" style="{{ cell.launchStyle }}">{{ cell.launchGlyph }}</button>
+                      <textarea value="{{ cell.code }}" onInput="{{ cell.onInput }}" onKeyDown="{{ cell.onKeyDown }}" onFocus="{{ cell.onFocus }}" onBlur="{{ cell.onBlur }}" spellcheck="false" placeholder="s &quot;bd*4&quot;" style="{{ cell.textStyle }}"></textarea>
+                    </div>
+                    <div style="{{ cell.errorBubbleStyle }}">{{ cell.error }}</div>
+                  </div>
+                </sc-for>
+                <button onClick="{{ track.onAddCell }}" onDragOver="{{ track.onAddDragOver }}" onDrop="{{ track.onAddDrop }}" title="Add a text to this track" style="{{ track.addCellStyle }}">
+                  <span style="font-size:22px; font-weight:300; line-height:1;">+</span>
+                </button>
+              </div>
+            </div>
+          </sc-for>
+
+          <button onClick="{{ addTrack }}" style="display:flex; align-items:center; gap:9px; margin-top:6px; margin-left:2px; height:34px; padding:0 16px; white-space:nowrap; background:transparent; color: oklch(0.55 0.01 260); border:1px dashed oklch(0.32 0.01 260); border-radius:7px; font-family:'Space Grotesk',sans-serif; font-size:12px; letter-spacing:0.5px; cursor:pointer;" style-hover="border-color: oklch(0.45 0.01 260); color: oklch(0.75 0.01 260);">
+            <span style="font-size:16px; line-height:1;">+</span> ADD TRACK
+          </button>
+        </main>
+
+        <!-- ===== SCORE TIMELINE (same tracks) ===== -->
+        <div style="{{ scorePanelStyle }}">
+          <div onMouseDown="{{ onResizeStart }}" title="Drag to resize grid / score" style="{{ resizeHandleStyle }}">
+            <div style="{{ resizeGripStyle }}"></div>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; height:40px; flex:none; padding:0 18px; border-bottom:1px solid oklch(0.22 0.01 260);">
+            <div style="display:flex; align-items:baseline; gap:10px;">
+              <span style="font-size:10px; font-weight:700; letter-spacing:1.5px; color:oklch(0.6 0.01 260);">SCORE</span>
+              <span style="font-size:10px; color:oklch(0.45 0.01 260);">paint bars ahead of the playhead to automate tracks on / off</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <button onClick="{{ toggleLoop }}" title="Loop on / off — ignore the limiters" style="{{ loopToggleStyle }}">
+                <span style="{{ loopDotStyle }}"></span>
+                <span>{{ loopToggleLabel }}</span>
+              </button>
+              <span style="font-size:11px; color:oklch(0.62 0.01 260); font-variant-numeric:tabular-nums; letter-spacing:0.5px;">{{ barPosLabel }}</span>
+              <button onClick="{{ onTogglePlay }}" title="Play / stop the playhead" style="{{ scorePlayBtnStyle }}">
+                <span style="{{ playGlyphStyle }}"></span>
+                <span>{{ playLabel }}</span>
+              </button>
+            </div>
+          </div>
+
+          <div style="flex:1; overflow:hidden; position:relative; display:flex; flex-direction:column;">
+            <!-- ruler -->
+            <div style="display:flex; align-items:stretch; height:20px; position:sticky; top:0; background:oklch(0.155 0.008 260); z-index:3; border-bottom:1px solid oklch(0.2 0.01 260);">
+              <div style="flex:none; width:220px; border-right:1px solid oklch(0.24 0.01 260);"></div>
+              <div style="flex:1; display:grid; grid-template-columns:repeat(16,1fr);">
+                <sc-for list="{{ rulerCells }}" as="r" hint-placeholder-count="16">
+                  <div style="{{ r.style }}">{{ r.label }}</div>
+                </sc-for>
+              </div>
+            </div>
+            <!-- rows -->
+            <div style="flex:1; overflow:auto; display:flex; flex-direction:column;">
+            <sc-for list="{{ scoreRows }}" as="row" hint-placeholder-count="4">
+              <div style="flex:1 0 40px; min-height:40px; display:flex; align-items:stretch;">
+                <div style="flex:none; width:220px; display:flex; align-items:center; gap:9px; padding:0 12px; border-right:1px solid oklch(0.24 0.01 260); border-bottom:1px solid oklch(0.19 0.008 260);">
+                  <div style="{{ row.accentStyle }}"></div>
+                  <div style="flex:1; min-width:0;">
+                    <div style="display:flex; align-items:center; gap:7px;">
+                      <span style="{{ row.nameStyle }}">{{ row.name }}</span>
+                      <span style="{{ row.dotStyle }}"></span>
+                    </div>
+                    <div style="{{ row.schedStyle }}">▸ {{ row.schedLabel }}</div>
+                  </div>
+                </div>
+                <div style="flex:1; display:grid; grid-template-columns:repeat(16,1fr); border-bottom:1px solid oklch(0.19 0.008 260);">
+                  <sc-for list="{{ row.cells }}" as="c" hint-placeholder-count="16">
+                    <div style="{{ c.style }}" onMouseDown="{{ c.onDown }}" onMouseEnter="{{ c.onEnter }}"></div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+            </div>
+            <!-- playhead + loop-limiter overlay -->
+            <div ref="{{ laneRef }}" style="position:absolute; top:0; bottom:0; left:220px; right:0; pointer-events:none; z-index:4;">
+              <div style="{{ loopShadeLeftStyle }}"></div>
+              <div style="{{ loopShadeRightStyle }}"></div>
+              <div style="{{ playheadStyle }}"></div>
+              <div style="{{ limStartStyle }}">
+                <div style="{{ limLineStyle }}"></div>
+                <div style="{{ limTabStyle }}" onMouseDown="{{ onLimStartDown }}" title="Drag — loop start">⟨</div>
+              </div>
+              <div style="{{ limEndStyle }}">
+                <div style="{{ limLineStyle }}"></div>
+                <div style="{{ limTabStyle }}" onMouseDown="{{ onLimEndDown }}" title="Drag — loop end">⟩</div>
+              </div>
+              <div style="{{ loopMoveStyle }}" onMouseDown="{{ onLoopMoveDown }}" title="Drag to move the whole loop">
+                <div style="{{ loopMoveGripStyle }}"></div>
+              </div>
+            </div>
+            <!-- score empty state -->
+            <sc-if value="{{ scoreEmpty }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute; left:220px; right:0; top:20px; bottom:0; display:flex; align-items:center; justify-content:center; pointer-events:none;">
+                <div style="text-align:center; color:oklch(0.5 0.01 260); font-size:11px; line-height:1.7; max-width:360px;">
+                  <div style="font-size:18px; opacity:0.4; margin-bottom:4px;">▦</div>
+                  Nothing scheduled yet.<br />Click or drag across the lanes to paint bars — a run of painted cells plays that track for those bars, then stops.
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+
+      <!-- no-song empty state -->
+      <div style="{{ noSongStyle }}">
+        <div style="font-size:40px; opacity:0.3;">♪</div>
+        <div style="font-size:14px; font-family:'Space Grotesk',sans-serif;">No song open</div>
+        <div style="font-size:11.5px; max-width:280px; text-align:center; line-height:1.6;">Pick a song from the left, or create a new one to start building a grid.</div>
+        <button onClick="{{ newSong }}" style="display:flex; align-items:center; gap:7px; height:36px; padding:0 18px; background:oklch(0.22 0.03 200); color:oklch(0.85 0.08 200); border:1px solid oklch(0.4 0.06 200); border-radius:7px; font-family:'Space Grotesk',sans-serif; font-size:12px; cursor:pointer;">
+          <span style="font-size:15px; line-height:1;">+</span> New song
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ DEFINITIONS PAGE ============ -->
+  <div style="{{ defsPageStyle }}">
+
+    <!-- toolbox rail (collapsed strip) -->
+    <aside style="{{ toolboxRailMiniStyle }}">
+      <button onClick="{{ toggleToolboxRail }}" title="Expand toolboxes" style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:7px; border:1px solid oklch(0.3 0.01 260); background:oklch(0.2 0.01 260); color:oklch(0.7 0.01 260); font-size:13px; cursor:pointer;" style-hover="color:oklch(0.9 0.01 260);">›</button>
+      <div style="writing-mode:vertical-rl; font-size:9px; font-weight:700; letter-spacing:1.5px; color:oklch(0.5 0.01 260); margin-top:4px;">TOOLBOXES</div>
+      <button onClick="{{ newToolbox }}" title="New toolbox" style="width:28px; height:28px; margin-top:auto; display:flex; align-items:center; justify-content:center; border-radius:7px; border:1px solid oklch(0.3 0.01 260); background:oklch(0.2 0.01 260); color:oklch(0.7 0.01 260); font-size:16px; cursor:pointer;" style-hover="color:oklch(0.9 0.01 260);">+</button>
+    </aside>
+
+    <!-- toolbox rail (expanded) -->
+    <aside style="{{ toolboxRailFullStyle }}">
+      <div style="display:flex; align-items:center; justify-content:space-between; height:42px; flex:none; padding:0 8px 0 14px; border-bottom:1px solid oklch(0.22 0.01 260);">
+        <span style="font-size:10px; font-weight:700; letter-spacing:1.5px; color:oklch(0.58 0.01 260);">TOOLBOXES</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button onClick="{{ triggerImport }}" title="Import toolbox (.json)" style="font-size:8px; letter-spacing:0.5px; padding:3px 6px; border-radius:5px; border:1px solid oklch(0.3 0.01 260); background:transparent; color:oklch(0.6 0.01 260); cursor:pointer;" style-hover="color:oklch(0.85 0.01 260);">IMPORT</button>
+          <button onClick="{{ exportToolbox }}" title="Export current toolbox" style="font-size:8px; letter-spacing:0.5px; padding:3px 6px; border-radius:5px; border:1px solid oklch(0.3 0.01 260); background:transparent; color:oklch(0.6 0.01 260); cursor:pointer;" style-hover="color:oklch(0.85 0.01 260);">EXPORT</button>
+          <button onClick="{{ toggleToolboxRail }}" title="Collapse toolboxes" style="width:24px; height:24px; display:flex; align-items:center; justify-content:center; border-radius:6px; border:none; background:transparent; color:oklch(0.5 0.01 260); font-size:13px; cursor:pointer;" style-hover="background:oklch(0.24 0.01 260); color:oklch(0.85 0.01 260);">‹</button>
+        </div>
+      </div>
+      <div style="flex:1; overflow:auto; padding:8px;">
+        <sc-for list="{{ toolboxesVM }}" as="tb" hint-placeholder-count="2">
+          <div style="{{ tb.rowStyle }}">
+            <div style="{{ tb.accentStyle }}"></div>
+            <div style="flex:1; min-width:0; cursor:pointer;" onClick="{{ tb.onOpen }}">
+              <sc-if value="{{ tb.editing }}" hint-placeholder-val="{{ false }}">
+                <input value="{{ tb.name }}" onInput="{{ tb.onNameInput }}" onBlur="{{ tb.onNameBlur }}" onKeyDown="{{ tb.onNameKey }}" spellcheck="false" style="width:100%; background:oklch(0.13 0.01 260); border:1px solid oklch(0.4 0.02 300); border-radius:4px; outline:none; color:oklch(0.92 0.006 260); font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13px; padding:2px 5px;" />
+              </sc-if>
+              <sc-if value="{{ tb.notEditing }}" hint-placeholder-val="{{ true }}">
+                <div style="{{ tb.nameStyle }}">{{ tb.name }}</div>
+                <div style="{{ tb.metaStyle }}">{{ tb.meta }}</div>
+              </sc-if>
+            </div>
+            <div style="display:flex; align-items:center; gap:1px;">
+              <button onClick="{{ tb.onEdit }}" title="Rename" style="width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:5px; border:none; background:transparent; color:oklch(0.5 0.01 260); font-size:11px; cursor:pointer;" style-hover="background:oklch(0.24 0.01 260); color:oklch(0.85 0.01 260);">✎</button>
+              <button onClick="{{ tb.onDuplicate }}" title="Duplicate" style="width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:5px; border:none; background:transparent; color:oklch(0.5 0.01 260); font-size:12px; cursor:pointer;" style-hover="background:oklch(0.24 0.01 260); color:oklch(0.85 0.01 260);">⧉</button>
+              <button onClick="{{ tb.onDelete }}" title="{{ tb.deleteTitle }}" style="{{ tb.deleteStyle }}">{{ tb.deleteGlyph }}</button>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ toolboxesEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="margin:24px 10px; text-align:center; color:oklch(0.5 0.01 260); font-size:11px; line-height:1.6;">
+            <div style="font-size:22px; opacity:0.4; margin-bottom:6px;">⚙</div>
+            No toolboxes.<br />Create or import one.
+          </div>
+        </sc-if>
+      </div>
+      <div style="flex:none; padding:10px; border-top:1px solid oklch(0.22 0.01 260);">
+        <button onClick="{{ newToolbox }}" style="width:100%; display:flex; align-items:center; justify-content:center; gap:7px; height:34px; background:oklch(0.21 0.01 260); color:oklch(0.78 0.01 260); border:1px solid oklch(0.3 0.01 260); border-radius:7px; font-family:'Space Grotesk',sans-serif; font-size:12px; cursor:pointer;" style-hover="background:oklch(0.25 0.01 260);">
+          <span style="font-size:15px; line-height:1;">+</span> New toolbox
+        </button>
+      </div>
+      <input type="file" accept="application/json,.json" ref="{{ fileRef }}" onChange="{{ onImportFile }}" style="display:none;" />
+    </aside>
+
+    <!-- defs main -->
+    <div style="flex:1; min-width:0; display:flex; flex-direction:column;">
+      <div style="{{ hasToolboxStyle }}">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex:none; padding:14px 24px 12px; border-bottom:1px solid oklch(0.24 0.01 260);">
+          <div style="min-width:0;">
+            <div style="display:flex; align-items:baseline; gap:11px;">
+              <span style="font-size:9px; letter-spacing:1.5px; color:oklch(0.5 0.01 260);">TOOLBOX</span>
+              <input value="{{ tbxName }}" onInput="{{ onTbxName }}" spellcheck="false" style="background:transparent; border:none; outline:none; color:oklch(0.95 0.006 260); font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:18px; padding:0; min-width:40px;" />
+            </div>
+            <div style="font-size:11px; color:oklch(0.52 0.01 260); margin-top:4px; line-height:1.5;">Every <span style="color:oklch(0.7 0.01 260);">let</span> below is in scope for every text on every grid · <span style="{{ tbxStatStyle }}">{{ tbxStat }}</span></div>
+          </div>
+          <button onClick="{{ applyAll }}" disabled="{{ applyAllDisabled }}" title="Apply all valid changes to live scope" style="{{ applyAllStyle }}">{{ applyAllLabel }}</button>
+        </div>
+
+        <div style="flex:1; overflow:auto; padding:18px 24px 40px;">
+          <div style="display:flex; flex-direction:column; gap:14px; max-width:820px;">
+            <sc-for list="{{ blocksVM }}" as="b" hint-placeholder-count="3">
+              <div style="{{ b.cardStyle }}">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:9px;">
+                  <div style="display:flex; align-items:center; gap:9px; min-width:0;">
+                    <span style="color:oklch(0.5 0.01 260); font-size:12px;">let</span>
+                    <input value="{{ b.name }}" onInput="{{ b.onName }}" spellcheck="false" style="background:transparent; border:none; outline:none; color:oklch(0.92 0.006 260); font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14px; padding:0; min-width:40px; max-width:200px;" />
+                    <span style="{{ b.appliedBadge }}">{{ b.appliedText }}</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:7px;">
+                    <span style="{{ b.statusStyle }}">{{ b.statusText }}</span>
+                    <button onClick="{{ b.onApply }}" disabled="{{ b.applyDisabled }}" title="{{ b.applyTitle }}" style="{{ b.applyStyle }}">{{ b.applyLabel }}</button>
+                    <button onClick="{{ b.onDelete }}" title="{{ b.deleteTitle }}" style="{{ b.deleteStyle }}">{{ b.deleteGlyph }}</button>
+                  </div>
+                </div>
+                <textarea value="{{ b.code }}" onInput="{{ b.onCode }}" spellcheck="false" placeholder="name = ..." style="{{ b.codeStyle }}"></textarea>
+                <sc-if value="{{ b.invalid }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex; align-items:center; gap:8px; margin-top:9px; padding:7px 10px; background:oklch(0.22 0.05 25); border:1px solid oklch(0.4 0.12 25); border-radius:6px; font-size:11px; color:oklch(0.85 0.1 25);">
+                    <span style="font-weight:700;">✕ parse error</span>
+                    <span style="color:oklch(0.75 0.06 25);">{{ b.error }}</span>
+                  </div>
+                  <sc-if value="{{ b.hasCascade }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:8px; padding:8px 10px; background:oklch(0.2 0.035 55); border:1px solid oklch(0.42 0.1 55); border-radius:6px;">
+                      <div style="font-size:11px; font-weight:700; color:oklch(0.82 0.11 65); letter-spacing:0.3px;">⚠ cascades — breaks {{ b.cascadeCount }} grid {{ b.cascadeNoun }} that use this definition</div>
+                      <div style="margin-top:6px; display:flex; flex-direction:column; gap:3px;">
+                        <sc-for list="{{ b.cascadeList }}" as="dep" hint-placeholder-count="2">
+                          <div style="font-size:10.5px; display:flex; gap:8px;">
+                            <span style="color:oklch(0.55 0.02 260); min-width:150px;">{{ dep.loc }}</span>
+                            <span style="color:oklch(0.72 0.015 65); font-family:'JetBrains Mono',monospace;">{{ dep.code }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </sc-if>
+                </sc-if>
+              </div>
+            </sc-for>
+            <sc-if value="{{ blocksEmpty }}" hint-placeholder-val="{{ false }}">
+              <div style="margin:20px 0; padding:34px; text-align:center; color:oklch(0.5 0.01 260); font-size:12px; line-height:1.7; border:1px dashed oklch(0.3 0.01 260); border-radius:10px;">
+                <div style="font-size:26px; opacity:0.35; margin-bottom:8px;">{ }</div>
+                This toolbox has no definitions.<br />Add a <span style="color:oklch(0.7 0.01 260);">let</span> block — a helper, a named pattern, or the tempo.
+              </div>
+            </sc-if>
+            <button onClick="{{ addBlock }}" style="display:flex; align-items:center; gap:9px; align-self:flex-start; height:36px; padding:0 16px; background:transparent; color:oklch(0.6 0.01 260); border:1px dashed oklch(0.32 0.01 260); border-radius:8px; font-family:'Space Grotesk',sans-serif; font-size:12px; cursor:pointer;" style-hover="border-color:oklch(0.45 0.01 260); color:oklch(0.8 0.01 260);">
+              <span style="font-size:16px; line-height:1;">+</span> Add definition
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style="{{ noToolboxStyle }}">
+        <div style="font-size:40px; opacity:0.3;">⚙</div>
+        <div style="font-size:14px; font-family:'Space Grotesk',sans-serif;">No toolbox open</div>
+        <div style="font-size:11.5px; max-width:300px; text-align:center; line-height:1.6;">A toolbox holds the shared <span style="color:oklch(0.7 0.01 260);">let</span> scope for your grids. Create one, or import an existing set.</div>
+        <div style="display:flex; gap:8px;">
+          <button onClick="{{ newToolbox }}" style="display:flex; align-items:center; gap:7px; height:36px; padding:0 18px; background:oklch(0.22 0.03 300); color:oklch(0.85 0.08 300); border:1px solid oklch(0.4 0.06 300); border-radius:7px; font-family:'Space Grotesk',sans-serif; font-size:12px; cursor:pointer;">
+            <span style="font-size:15px; line-height:1;">+</span> New toolbox
+          </button>
+          <button onClick="{{ triggerImport }}" style="display:flex; align-items:center; gap:7px; height:36px; padding:0 18px; background:transparent; color:oklch(0.7 0.01 260); border:1px solid oklch(0.32 0.01 260); border-radius:7px; font-family:'Space Grotesk',sans-serif; font-size:12px; cursor:pointer;">Import .json</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- toast -->
+  <div style="{{ toastStyle }}">{{ toast }}</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  mk = (idx) => { const a = new Array(16).fill(false); idx.forEach(i => a[i] = true); return a; };
+
+  state = {
+    page: 'song',
+    engine: true,
+    hoverCell: null,
+    focusCell: null,
+    confirm: null,
+    editing: null,
+    drag: null,
+    over: null,
+    toast: null,
+    songRailOpen: true,
+    toolboxRailOpen: true,
+    scoreHeight: 300,
+    resizing: false,
+    playing: true,
+    playhead: 2.35,
+    loopStart: 0,
+    loopEnd: 12,
+    loopOn: true,
+    currentSongId: 'sA',
+    currentToolboxId: 'tb1',
+    songs: [
+      { id: 'sA', name: 'midnight set', tracks: [
+        { id: 't1', name: 'drums',  hue: 25,  active: 'c1', selected: 'c1', vol: 92, flt: 100, dly: 0, score: this.mk([0,1,2,3,4,5]), cells: [
+          { id: 'c1', code: 's "bd*4"' },
+          { id: 'c2', code: 's "bd*2 sn:3"' },
+          { id: 'c3', code: 's "bd(3,8)" # gain 1.1' },
+        ]},
+        { id: 't2', name: 'hats',   hue: 95,  active: null, selected: 'c4', vol: 74, flt: 88, dly: 12, score: this.mk([6,7,8,9]), cells: [
+          { id: 'c4', code: 's "hh*8" # feel' },
+          { id: 'c5', code: 's "hh*16?" # pan sine' },
+        ]},
+        { id: 't3', name: 'melody', hue: 200, active: 'c8', selected: 'c8', vol: 80, flt: 72, dly: 30, score: this.mk([2,3,4,5,6,7,8]), cells: [
+          { id: 'c6', code: 's "arpy*4" # feel' },
+          { id: 'c7', code: 'n "0 3 5 7" # s "arpy" # feel' },
+          { id: 'c8', code: 'n (run 8) # s "arpy" # room 0.3' },
+        ]},
+        { id: 't4', name: 'bass',   hue: 285, active: null, selected: 'c9', vol: 85, flt: 60, dly: 0, score: this.mk([8,9,10,11]), cells: [
+          { id: 'c9', code: 'note "c2 e2 g2" # s "bass"' },
+          { id: 'c10', code: 's "jvbass*2 # crush 4' },
+        ]},
+        { id: 't5', name: 'texture', hue: 330, active: null, selected: 'c11', vol: 66, flt: 45, dly: 55, score: this.mk([0,1,12,13,14,15]), cells: [
+          { id: 'c11', code: 's "pad" # room 0.6 # size 0.9' },
+        ]},
+      ]},
+      { id: 'sB', name: 'warm-up', tracks: [
+        { id: 'tbA', name: 'pulse', hue: 25, active: 'ca1', selected: 'ca1', vol: 70, flt: 82, dly: 0, score: this.mk([]), cells: [
+          { id: 'ca1', code: 's "bd*2"' },
+          { id: 'ca2', code: 's "bd ~ bd ~"' },
+        ]},
+        { id: 'tbB', name: 'wash', hue: 200, active: null, selected: 'cb1', vol: 60, flt: 55, dly: 40, score: this.mk([]), cells: [
+          { id: 'cb1', code: 's "pad" # feel' },
+          { id: 'cb2', code: 's "pad:2" # room 0.5' },
+        ]},
+      ]},
+    ],
+    toolboxes: [
+      { id: 'tb1', name: 'live set', blocks: [
+        { id: 'b1', name: 'bpm',   code: 'bpm = setcps (130/60/4)', applied: 'bpm = setcps (130/60/4)' },
+        { id: 'b2', name: 'swing', code: 'swing = (# nudge "0 0.008 0 0.012")', applied: 'swing = (# nudge "0 0.008 0 0.012")' },
+        { id: 'b3', name: 'feel',  code: 'feel = (# room 0.4 # size 0.9', applied: 'feel = (# room 0.35 # size 0.8)' },
+        { id: 'b4', name: 'stut2', code: 'stut2 = stut 2 0.5 0.1', applied: 'stut2 = stut 2 0.5 0.1' },
+      ]},
+      { id: 'tb2', name: 'ambient rig', blocks: [
+        { id: 'b5', name: 'drift', code: 'drift = slow 8 . (# gain 0.8)', applied: 'drift = slow 8 . (# gain 0.8)' },
+        { id: 'b6', name: 'wash',  code: 'wash = (# room 0.9 # size 0.95 # orbit 1)', applied: 'wash = (# room 0.9 # size 0.95 # orbit 1)' },
+      ]},
+    ],
+  };
+
+  rnd() { return Math.random().toString(36).slice(2, 8); }
+  accent(hue, l, c) { return `oklch(${l} ${c} ${hue})`; }
+  escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  sliderBg(val, hue) { const f = this.accent(hue, 0.7, 0.14); const t = 'oklch(0.28 0.01 260)'; return `background:linear-gradient(to right, ${f} 0%, ${f} ${val}%, ${t} ${val}%, ${t} 100%);`; }
+
+  validate(code) {
+    const s = (code || '').trim();
+    if (!s) return { empty: true, valid: false };
+    if (((s.match(/"/g) || []).length) % 2 !== 0) return { valid: false, error: 'unbalanced quote' };
+    let p = 0;
+    for (const ch of s) { if (ch === '(') p++; else if (ch === ')') p--; if (p < 0) return { valid: false, error: 'unmatched )' }; }
+    if (p !== 0) return { valid: false, error: 'missing )' };
+    let b = 0;
+    for (const ch of s) { if (ch === '[') b++; else if (ch === ']') b--; if (b < 0) return { valid: false, error: 'unmatched ]' }; }
+    if (b !== 0) return { valid: false, error: 'missing ]' };
+    return { valid: true };
+  }
+
+  flash(msg) { clearTimeout(this._toast); this.setState({ toast: msg }); this._toast = setTimeout(() => this.setState({ toast: null }), 2400); }
+
+  // ---- lifecycle / playhead ----
+  componentDidMount() { window.addEventListener('mouseup', this._endPaint); if (this.state.playing) { this._curBar = -1; this._start(); } }
+  componentWillUnmount() { window.removeEventListener('mouseup', this._endPaint); window.removeEventListener('mousemove', this._onResizeMove); window.removeEventListener('mouseup', this._onResizeEnd); window.removeEventListener('mousemove', this._onLimMove); window.removeEventListener('mouseup', this._onLimEnd); window.removeEventListener('mousemove', this._onLoopMove); window.removeEventListener('mouseup', this._onLoopMoveEnd); this._stop(); }
+  _start() { if (this._raf) return; this._last = null; this._raf = requestAnimationFrame(this.tick); }
+  _stop() { if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; } }
+  tick = (ts) => {
+    if (!this.state.playing) { this._raf = null; return; }
+    if (this._last == null) this._last = ts;
+    let dt = (ts - this._last) / 1000; this._last = ts;
+    if (dt > 0.25) dt = 0.25;
+    const spb = 1.6;
+    const lo = this.state.loopOn ? this.state.loopStart : 0;
+    const hi = this.state.loopOn ? this.state.loopEnd : 16;
+    let ph = this.state.playhead + dt / spb;
+    if (ph < lo) ph = lo;
+    if (ph >= hi) ph = lo + ((ph - lo) % (hi - lo));
+    const bar = Math.floor(ph);
+    if (bar !== this._curBar) { this._curBar = bar; this.applyAutomation(bar); }
+    this.setState({ playhead: ph });
+    this._raf = requestAnimationFrame(this.tick);
+  };
+  onTogglePlay = () => {
+    const p = !this.state.playing;
+    if (p) { this.setState({ playing: true }); this._curBar = -1; this._start(); this.applyAutomation(Math.floor(this.state.playhead)); }
+    else { this.setState({ playing: false }); this._stop(); }
+  };
+  applyAutomation(bar) {
+    this._setTracks(tracks => tracks.map(t => {
+      const sc = t.score || []; if (!sc.some(Boolean)) return t;
+      if (sc[bar]) {
+        const sel = (t.selected && t.cells.some(c => c.id === t.selected)) ? t.selected : (t.cells[0] ? t.cells[0].id : null);
+        const cell = t.cells.find(c => c.id === sel);
+        const ok = cell && this.validate(cell.code).valid && this.state.engine;
+        return { ...t, active: ok ? sel : null };
+      }
+      return { ...t, active: null };
+    }));
+  }
+
+  // ---- painting the score ----
+  startPaint = (tid, bar) => {
+    const song = this.state.songs.find(s => s.id === this.state.currentSongId);
+    const t = song && song.tracks.find(x => x.id === tid);
+    const cur = t && t.score ? !!t.score[bar] : false;
+    this._painting = true; this._paintVal = !cur;
+    this.setPaint(tid, bar, this._paintVal);
+  };
+  paintEnter = (tid, bar) => { if (this._painting) this.setPaint(tid, bar, this._paintVal); };
+  _endPaint = () => { this._painting = false; };
+
+  // ---- loop limiters ----
+  laneRef = (el) => { this._lane = el; };
+  onLimStartDown = (e) => { e.preventDefault(); e.stopPropagation(); this._lim = 'start'; window.addEventListener('mousemove', this._onLimMove); window.addEventListener('mouseup', this._onLimEnd); };
+  onLimEndDown = (e) => { e.preventDefault(); e.stopPropagation(); this._lim = 'end'; window.addEventListener('mousemove', this._onLimMove); window.addEventListener('mouseup', this._onLimEnd); };
+  _onLimMove = (e) => {
+    if (!this._lim || !this._lane) return;
+    const r = this._lane.getBoundingClientRect();
+    let bar = Math.round((e.clientX - r.left) / r.width * 16);
+    bar = Math.max(0, Math.min(16, bar));
+    if (this._lim === 'start') { bar = Math.min(bar, this.state.loopEnd - 1); this.setState(s => { const ph = s.playhead < bar ? bar : s.playhead; return { loopStart: bar, playhead: ph }; }); }
+    else { bar = Math.max(bar, this.state.loopStart + 1); this.setState(s => { const ph = s.playhead >= bar ? s.loopStart : s.playhead; return { loopEnd: bar, playhead: ph }; }); }
+  };
+  _onLimEnd = () => { this._lim = null; window.removeEventListener('mousemove', this._onLimMove); window.removeEventListener('mouseup', this._onLimEnd); };
+  toggleLoop = () => this.setState(s => ({ loopOn: !s.loopOn }));
+  onLoopMoveDown = (e) => { e.preventDefault(); e.stopPropagation(); this._loopMove = { x: e.clientX, s: this.state.loopStart, e: this.state.loopEnd }; window.addEventListener('mousemove', this._onLoopMove); window.addEventListener('mouseup', this._onLoopMoveEnd); };
+  _onLoopMove = (e) => {
+    if (!this._loopMove || !this._lane) return;
+    const r = this._lane.getBoundingClientRect();
+    const len = this._loopMove.e - this._loopMove.s;
+    let delta = Math.round((e.clientX - this._loopMove.x) / r.width * 16);
+    let ns = Math.max(0, Math.min(16 - len, this._loopMove.s + delta));
+    this.setState(st => { const ne = ns + len; const ph = (st.playhead < ns || st.playhead >= ne) ? ns : st.playhead; return { loopStart: ns, loopEnd: ne, playhead: ph }; });
+  };
+  _onLoopMoveEnd = () => { this._loopMove = null; window.removeEventListener('mousemove', this._onLoopMove); window.removeEventListener('mouseup', this._onLoopMoveEnd); };
+
+  // ---- variation selection (what the score schedules) ----
+  selectCell = (tid, cid) => this._setTracks(tracks => tracks.map(t => t.id !== tid ? t : ({ ...t, selected: cid })));
+  setPaint = (tid, bar, val) => this._setTracks(tracks => tracks.map(t => {
+    if (t.id !== tid) return t;
+    const sc = t.score ? [...t.score] : new Array(16).fill(false);
+    sc[bar] = val; return { ...t, score: sc };
+  }));
+
+  // ---- nav ----
+  toggleSongRail = () => this.setState(s => ({ songRailOpen: !s.songRailOpen }));
+  toggleToolboxRail = () => this.setState(s => ({ toolboxRailOpen: !s.toolboxRailOpen }));
+  onResizeStart = (e) => { e.preventDefault(); this._rz = { y: e.clientY, h: this.state.scoreHeight }; window.addEventListener('mousemove', this._onResizeMove); window.addEventListener('mouseup', this._onResizeEnd); this.setState({ resizing: true }); };
+  _onResizeMove = (e) => { if (!this._rz) return; const dy = this._rz.y - e.clientY; let h = this._rz.h + dy; h = Math.max(96, Math.min(h, window.innerHeight - 200)); this.setState({ scoreHeight: h }); };
+  _onResizeEnd = () => { this._rz = null; window.removeEventListener('mousemove', this._onResizeMove); window.removeEventListener('mouseup', this._onResizeEnd); this.setState({ resizing: false }); };
+  goSong = () => this.setState({ page: 'song' });
+  goDefs = () => this.setState({ page: 'defs' });
+
+  _setTracks(fn) { this.setState(s => ({ songs: s.songs.map(so => so.id !== s.currentSongId ? so : ({ ...so, tracks: fn(so.tracks) })) })); }
+
+  // ---- transport ----
+  toggleEngine = () => this.setState(s => {
+    const on = !s.engine;
+    if (!on) return { engine: false, songs: s.songs.map(so => so.id !== s.currentSongId ? so : ({ ...so, tracks: so.tracks.map(t => ({ ...t, active: null })) })) };
+    return { engine: true };
+  });
+  hush = () => this._setTracks(tracks => tracks.map(t => ({ ...t, active: null })));
+
+  // ---- grid launch / edit ----
+  toggleCell = (tid, cid) => this._setTracks(tracks => tracks.map(t => {
+    if (t.id !== tid) return t;
+    if (t.active === cid) return { ...t, active: null };
+    return { ...t, active: cid, selected: cid };
+  }));
+  stopTrack = (tid) => this._setTracks(tracks => tracks.map(t => t.id !== tid ? t : ({ ...t, active: null })));
+  renameTrack = (tid, v) => this._setTracks(tracks => tracks.map(t => t.id !== tid ? t : ({ ...t, name: v })));
+  setCtrl = (tid, key, val) => this._setTracks(tracks => tracks.map(t => t.id !== tid ? t : ({ ...t, [key]: Number(val) })));
+  editCode = (tid, cid, v) => this._setTracks(tracks => tracks.map(t => {
+    if (t.id !== tid) return t;
+    const cells = t.cells.map(c => c.id !== cid ? c : ({ ...c, code: v }));
+    let active = t.active;
+    if (active === cid && !this.validate(v).valid) active = null;
+    return { ...t, cells, active };
+  }));
+  addCell = (tid) => this._setTracks(tracks => tracks.map(t => t.id !== tid ? t : ({ ...t, cells: [...t.cells, { id: 'c' + this.rnd(), code: '' }] })));
+  addTrack = () => this._setTracks(tracks => {
+    const hues = [25, 95, 200, 285, 330, 55, 155, 250];
+    const used = tracks.map(t => t.hue);
+    const hue = hues.find(h => !used.includes(h)) ?? Math.floor(Math.random() * 360);
+    return [...tracks, { id: 't' + this.rnd(), name: 'track ' + (tracks.length + 1), hue, active: null, selected: null, vol: 80, flt: 100, dly: 0, score: new Array(16).fill(false), cells: [] }];
+  });
+
+  // ---- gated delete ----
+  armDelete(key, action) {
+    if (this.state.confirm === key) { clearTimeout(this._t); this.setState({ confirm: null }); action(); }
+    else { clearTimeout(this._t); this.setState({ confirm: key }); this._t = setTimeout(() => this.setState(s => (s.confirm === key ? { confirm: null } : {})), 2800); }
+  }
+  removeTrack = (tid) => this.armDelete('trk:' + tid, () => this._setTracks(tracks => tracks.filter(t => t.id !== tid)));
+  removeCell = (tid, cid) => this.armDelete('cell:' + cid, () => this._setTracks(tracks => tracks.map(t => t.id !== tid ? t : ({ ...t, cells: t.cells.filter(c => c.id !== cid), active: t.active === cid ? null : t.active }))));
+
+  // ---- drag & drop ----
+  startDragCell = (tid, cid) => this.setState({ drag: { kind: 'cell', trackId: tid, cellId: cid }, confirm: null });
+  startDragTrack = (tid) => this.setState({ drag: { kind: 'track', trackId: tid }, confirm: null });
+  endDrag = () => this.setState({ drag: null, over: null });
+  setOver = (over) => this.setState(s => (s.over && over && s.over.kind === over.kind && s.over.id === over.id) ? {} : { over });
+  moveTrack = (toTid) => { const d = this.state.drag; if (!d || d.kind !== 'track' || d.trackId === toTid) { this.endDrag(); return; }
+    this._setTracks(tracks => { const arr = [...tracks]; const from = arr.findIndex(t => t.id === d.trackId); if (from < 0) return arr; const [m] = arr.splice(from, 1); const to = arr.findIndex(t => t.id === toTid); arr.splice(to < 0 ? arr.length : to, 0, m); return arr; }); this.endDrag(); };
+  moveCell = (toTid, toCellId) => { const d = this.state.drag; if (!d || d.kind !== 'cell') { this.endDrag(); return; }
+    if (d.trackId === toTid && d.cellId === toCellId) { this.endDrag(); return; }
+    this._setTracks(tracks => {
+      let moved = null;
+      const out = tracks.map(t => { if (t.id !== d.trackId) return t; const cells = t.cells.filter(c => { if (c.id === d.cellId) { moved = c; return false; } return true; }); const active = (t.active === d.cellId && d.trackId !== toTid) ? null : t.active; return { ...t, cells, active }; });
+      if (!moved) return tracks;
+      return out.map(t => { if (t.id !== toTid) return t; const cells = [...t.cells]; let idx = toCellId == null ? cells.length : cells.findIndex(c => c.id === toCellId); if (idx < 0) idx = cells.length; cells.splice(idx, 0, moved); return { ...t, cells }; });
+    });
+    this.endDrag();
+  };
+
+  // ---- inline rename ----
+  startEdit = (type, id) => this.setState({ editing: { type, id } });
+  stopEdit = () => this.setState({ editing: null });
+
+  // ---- song management ----
+  newSong = () => { const id = 's' + this.rnd(); this.setState(s => ({ songs: [...s.songs, { id, name: 'untitled song', tracks: [] }], currentSongId: id, page: 'song', editing: { type: 'song', id } })); };
+  openSong = (id) => this.setState({ currentSongId: id });
+  renameSong = (id, v) => this.setState(s => ({ songs: s.songs.map(so => so.id !== id ? so : ({ ...so, name: v })) }));
+  cloneSong(src) { return { id: 's' + this.rnd(), name: src.name + ' copy', tracks: src.tracks.map(t => { const map = {}; const cells = t.cells.map(c => { const nid = 'c' + this.rnd(); map[c.id] = nid; return { ...c, id: nid }; }); return { ...t, id: 't' + this.rnd(), cells, active: t.active ? map[t.active] : null, selected: t.selected ? map[t.selected] : null, score: t.score ? [...t.score] : new Array(16).fill(false) }; }) }; }
+  duplicateSong = (id) => this.setState(s => { const src = s.songs.find(so => so.id === id); if (!src) return {}; const copy = this.cloneSong(src); const i = s.songs.findIndex(so => so.id === id); const arr = [...s.songs]; arr.splice(i + 1, 0, copy); return { songs: arr, currentSongId: copy.id }; });
+  deleteSong = (id) => this.armDelete('song:' + id, () => this.setState(s => { const arr = s.songs.filter(so => so.id !== id); const cur = s.currentSongId === id ? (arr[0] ? arr[0].id : null) : s.currentSongId; return { songs: arr, currentSongId: cur }; }));
+
+  // ---- toolbox management ----
+  newToolbox = () => { const id = 'tb' + this.rnd(); this.setState(s => ({ toolboxes: [...s.toolboxes, { id, name: 'new toolbox', blocks: [] }], currentToolboxId: id, editing: { type: 'tbx', id } })); };
+  openToolbox = (id) => this.setState({ currentToolboxId: id });
+  renameToolbox = (id, v) => this.setState(s => ({ toolboxes: s.toolboxes.map(tb => tb.id !== id ? tb : ({ ...tb, name: v })) }));
+  duplicateToolbox = (id) => this.setState(s => { const src = s.toolboxes.find(tb => tb.id === id); if (!src) return {}; const copy = { id: 'tb' + this.rnd(), name: src.name + ' copy', blocks: src.blocks.map(b => ({ ...b, id: 'b' + this.rnd() })) }; const i = s.toolboxes.findIndex(tb => tb.id === id); const arr = [...s.toolboxes]; arr.splice(i + 1, 0, copy); return { toolboxes: arr, currentToolboxId: copy.id }; });
+  deleteToolbox = (id) => this.armDelete('tbx:' + id, () => this.setState(s => { const arr = s.toolboxes.filter(tb => tb.id !== id); const cur = s.currentToolboxId === id ? (arr[0] ? arr[0].id : null) : s.currentToolboxId; return { toolboxes: arr, currentToolboxId: cur }; }));
+
+  // ---- block management ----
+  _setBlocks(fn) { this.setState(s => ({ toolboxes: s.toolboxes.map(tb => tb.id !== s.currentToolboxId ? tb : ({ ...tb, blocks: fn(tb.blocks) })) })); }
+  addBlock = () => this._setBlocks(blocks => [...blocks, { id: 'b' + this.rnd(), name: 'untitled', code: '', applied: '' }]);
+  editBlockCode = (bid, v) => this._setBlocks(blocks => blocks.map(b => b.id !== bid ? b : ({ ...b, code: v })));
+  renameBlock = (bid, v) => this._setBlocks(blocks => blocks.map(b => b.id !== bid ? b : ({ ...b, name: v })));
+  applyBlock = (bid) => this._setBlocks(blocks => blocks.map(b => (b.id !== bid || !this.validate(b.code).valid) ? b : ({ ...b, applied: b.code })));
+  applyAll = () => this._setBlocks(blocks => blocks.map(b => this.validate(b.code).valid ? ({ ...b, applied: b.code }) : b));
+  deleteBlock = (bid) => this.armDelete('blk:' + bid, () => this._setBlocks(blocks => blocks.filter(b => b.id !== bid)));
+
+  // ---- song import / export ----
+  songFileRef = (el) => { this._songFile = el; };
+  triggerSongImport = () => { if (this._songFile) this._songFile.click(); };
+  exportSong = () => {
+    const so = this.state.songs.find(s => s.id === this.state.currentSongId);
+    if (!so) { this.flash('no song to export'); return; }
+    const data = JSON.stringify({ riptideSong: 1, name: so.name, tracks: so.tracks.map(t => ({ name: t.name, hue: t.hue, vol: t.vol, flt: t.flt, dly: t.dly, active: t.active, selected: t.selected, score: t.score, cells: t.cells.map(c => ({ id: c.id, code: c.code })) })) }, null, 2);
+    try { const blob = new Blob([data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = (so.name || 'song').replace(/\s+/g, '-') + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); this.flash('exported "' + so.name + '"'); }
+    catch (e) { this.flash('export blocked in this view'); }
+  };
+  onImportSongFile = (e) => {
+    const file = e.target.files && e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const j = JSON.parse(reader.result);
+        const tracks = (j.tracks || []).map(t => {
+          const map = {};
+          const cells = (t.cells || []).map(c => { const nid = 'c' + this.rnd(); map[c.id] = nid; return { id: nid, code: c.code || '' }; });
+          const score = Array.isArray(t.score) ? t.score.slice(0, 16) : new Array(16).fill(false);
+          while (score.length < 16) score.push(false);
+          return { id: 't' + this.rnd(), name: t.name || 'track', hue: (t.hue == null ? 200 : t.hue), vol: (t.vol == null ? 80 : t.vol), flt: (t.flt == null ? 100 : t.flt), dly: (t.dly == null ? 0 : t.dly), score, active: (t.active && map[t.active]) ? map[t.active] : null, selected: (t.selected && map[t.selected]) ? map[t.selected] : null, cells };
+        });
+        const id = 's' + this.rnd();
+        this.setState(s => ({ songs: [...s.songs, { id, name: j.name || 'imported song', tracks }], currentSongId: id, page: 'song' }));
+        this.flash('imported "' + (j.name || 'song') + '"');
+      } catch (err) { this.flash('import failed — invalid file'); }
+    };
+    reader.readAsText(file); e.target.value = '';
+  };
+
+  // ---- toolbox import / export ----
+  fileRef = (el) => { this._file = el; };
+  triggerImport = () => { if (this._file) this._file.click(); };
+  exportToolbox = () => {
+    const tb = this.state.toolboxes.find(t => t.id === this.state.currentToolboxId);
+    if (!tb) { this.flash('no toolbox to export'); return; }
+    const data = JSON.stringify({ riptideToolbox: 1, name: tb.name, blocks: tb.blocks.map(b => ({ name: b.name, code: b.code })) }, null, 2);
+    try { const blob = new Blob([data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = (tb.name || 'toolbox').replace(/\s+/g, '-') + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); this.flash('exported "' + tb.name + '"'); }
+    catch (e) { this.flash('export blocked in this view'); }
+  };
+  onImportFile = (e) => {
+    const file = e.target.files && e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try { const j = JSON.parse(reader.result); const blocks = (j.blocks || []).map(b => ({ id: 'b' + this.rnd(), name: b.name || 'untitled', code: b.code || '', applied: this.validate(b.code || '').valid ? (b.code || '') : '' })); const id = 'tb' + this.rnd(); this.setState(s => ({ toolboxes: [...s.toolboxes, { id, name: j.name || 'imported toolbox', blocks }], currentToolboxId: id, page: 'defs' })); this.flash('imported "' + (j.name || 'toolbox') + '"'); }
+      catch (err) { this.flash('import failed — invalid file'); }
+    };
+    reader.readAsText(file); e.target.value = '';
+  };
+
+  definedNames(code) { const out = []; const re = /(?:^|\n)\s*(?:let\s+)?([A-Za-z_]\w*)\s*=/g; let m; while ((m = re.exec(code || ''))) out.push(m[1]); return out; }
+  cascadeFor(names) {
+    if (!names.length) return { count: 0, list: [] };
+    const rx = new RegExp('\\b(' + names.map(n => this.escapeRe(n)).join('|') + ')\\b');
+    let count = 0; const list = [];
+    for (const so of this.state.songs) for (const t of so.tracks) for (const c of t.cells) { if (c.code && rx.test(c.code)) { count++; if (list.length < 5) list.push({ loc: so.name + ' › ' + t.name, code: c.code }); } }
+    return { count, list };
+  }
+
+  renderVals() {
+    const st = this.state;
+    const engine = st.engine;
+    const drag = st.drag;
+    const over = st.over;
+    const isSong = st.page === 'song';
+    const isDefs = st.page === 'defs';
+    const total = 16;
+
+    const song = st.songs.find(so => so.id === st.currentSongId) || null;
+    const gridTracks = song ? song.tracks : [];
+    const tbx = st.toolboxes.find(t => t.id === st.currentToolboxId) || null;
+
+    const tabBase = `padding:6px 15px; border-radius:6px; font-family:'Space Grotesk',sans-serif; font-size:12.5px; font-weight:500; cursor:pointer; border:none; transition:all .12s;`;
+    const tabOn = `background:oklch(0.28 0.01 260); color:oklch(0.95 0.006 260);`;
+    const tabOff = `background:transparent; color:oklch(0.55 0.01 260);`;
+
+    // ---------- GRID (unchanged) ----------
+    const tracks = gridTracks.map(track => {
+      const accColor = this.accent(track.hue, 0.72, 0.15);
+      const accBright = this.accent(track.hue, 0.8, 0.16);
+      const playing = track.active != null;
+      const trkArmed = st.confirm === 'trk:' + track.id;
+      const isDraggingT = drag && drag.kind === 'track' && drag.trackId === track.id;
+      const isOverT = over && over.kind === 'track' && over.id === track.id && drag && drag.kind === 'track' && !isDraggingT;
+
+      const cells = track.cells.map(cell => {
+        const v = this.validate(cell.code);
+        const isEmpty = !!v.empty;
+        const isActive = track.active === cell.id;
+        const isSelected = track.selected === cell.id;
+        const isValid = !!v.valid;
+        const canLaunch = isValid && engine;
+        const focused = st.focusCell === cell.id;
+        const hovered = st.hoverCell === cell.id;
+        const cArmed = st.confirm === 'cell:' + cell.id;
+        const showTools = hovered || cArmed;
+        const isDragging = drag && drag.kind === 'cell' && drag.cellId === cell.id;
+        const isOver = over && over.kind === 'cell' && over.id === cell.id && drag && drag.kind === 'cell' && !isDragging;
+
+        let border = '1px solid oklch(0.29 0.01 260)';
+        let bg = 'oklch(0.185 0.01 260)';
+        let shadow = 'none';
+        if (isActive) { border = `1.5px solid ${accBright}`; bg = this.accent(track.hue, 0.24, 0.06); shadow = `0 0 0 1px ${accBright}, 0 0 22px ${this.accent(track.hue, 0.72, 0.15)}66, inset 0 0 30px ${this.accent(track.hue, 0.6, 0.13)}22`; }
+        else if (!isValid && !isEmpty) { border = '1px solid oklch(0.55 0.19 25)'; bg = 'oklch(0.2 0.03 25)'; }
+        else if (focused) { border = '1.5px solid oklch(0.5 0.02 260)'; }
+        else if (isSelected && isValid) { border = `1px solid ${this.accent(track.hue, 0.5, 0.09)}`; }
+        let extra = `opacity:${isDragging ? 0.35 : 1};`;
+        if (isOver) extra += ' outline:2px solid oklch(0.78 0.02 260); outline-offset:2px;';
+        const wrapStyle = `position:relative; width:238px; min-height:64px; padding:8px 10px 10px; border-radius:8px; border:${border}; background:${bg}; box-shadow:${shadow}; transition:border-color .12s, box-shadow .18s, background .18s, opacity .12s; ${extra}`;
+
+        let lbg, lcolor, lborder, lshadow = 'none', lanim = 'none';
+        if (isActive) { lbg = accBright; lcolor = 'oklch(0.16 0.02 260)'; lborder = 'none'; lshadow = `0 0 12px ${accColor}aa`; lanim = 'rt-pulse 1.4s ease-in-out infinite'; }
+        else if (canLaunch) { lbg = 'transparent'; lcolor = accBright; lborder = `1.5px solid ${this.accent(track.hue, 0.55, 0.12)}`; }
+        else { lbg = 'transparent'; lcolor = 'oklch(0.4 0.01 260)'; lborder = '1.5px solid oklch(0.3 0.01 260)'; }
+        const launchStyle = `flex:none; width:38px; align-self:stretch; min-height:40px; display:flex; align-items:center; justify-content:center; font-size:13px; border-radius:6px; background:${lbg}; color:${lcolor}; border:${lborder}; box-shadow:${lshadow}; cursor:${canLaunch ? 'pointer' : 'not-allowed'}; animation:${lanim}; transition:all .12s;`;
+
+        const tcolor = isActive ? 'oklch(0.96 0.01 ' + track.hue + ')' : (isValid ? 'oklch(0.82 0.008 260)' : 'oklch(0.82 0.05 25)');
+        const textStyle = `flex:1; min-width:0; resize:none; border:none; outline:none; background:transparent; color:${tcolor}; font-size:12.5px; line-height:1.5; font-weight:${isActive ? 500 : 400}; overflow:hidden; padding:2px 0;`;
+
+        let badgeText = '', badgeColor = '', badgeShow = false;
+        if (isActive) { badgeText = '● PLAYING'; badgeColor = accBright; badgeShow = true; }
+        else if (!isValid && !isEmpty) { badgeText = '⚠ INVALID'; badgeColor = 'oklch(0.68 0.19 25)'; badgeShow = true; }
+        const badgeStyle = `font-size:8.5px; letter-spacing:1px; font-weight:700; color:${badgeColor}; opacity:${badgeShow ? 1 : 0}; pointer-events:none; ${isActive ? 'animation:rt-pulse 1.4s ease-in-out infinite;' : ''}`;
+
+        const showErr = !isValid && !isEmpty && hovered;
+        const errorBubbleStyle = `position:absolute; left:10px; bottom:-9px; transform:translateY(100%); z-index:20; padding:5px 9px; background:oklch(0.32 0.14 25); color:oklch(0.96 0.02 25); border:1px solid oklch(0.5 0.16 25); border-radius:6px; font-size:10.5px; white-space:nowrap; box-shadow:0 6px 18px oklch(0.1 0.02 260 / 0.6); opacity:${showErr ? 1 : 0}; pointer-events:none; transition:opacity .12s;`;
+
+        const selectStyle = `flex:none; width:13px; height:13px; border-radius:50%; cursor:pointer; padding:0; background:${isSelected ? accBright : 'transparent'}; border:1.5px solid ${isSelected ? accBright : 'oklch(0.42 0.01 260)'}; box-shadow:${isSelected ? `0 0 6px ${accColor}88` : 'none'}; opacity:${(isSelected || showTools) ? 1 : 0.4}; transition:opacity .1s;`;
+        const gripStyle = `cursor:grab; user-select:none; color:oklch(0.5 0.01 260); font-size:11px; line-height:1; opacity:${showTools ? 0.95 : 0.4}; transition:opacity .1s;`;
+        const deleteStyle = `width:15px; height:15px; display:flex; align-items:center; justify-content:center; border-radius:4px; font-size:9.5px; cursor:pointer; border:none; background:${cArmed ? 'oklch(0.52 0.19 25)' : 'transparent'}; color:${cArmed ? 'oklch(0.97 0.02 25)' : 'oklch(0.52 0.01 260)'}; opacity:${(showTools || cArmed) ? 1 : 0}; transition:opacity .1s; ${cArmed ? 'animation:rt-pulse 1s ease-in-out infinite;' : ''}`;
+
+        return {
+          id: cell.id, code: cell.code,
+          wrapStyle, launchStyle, textStyle, badgeStyle, badgeText, errorBubbleStyle, gripStyle, deleteStyle, selectStyle,
+          onSelect: () => this.selectCell(track.id, cell.id),
+          selectTitle: isSelected ? 'scheduled variation — the Score fires this one' : 'set as the scheduled variation',
+          error: v.error || '',
+          launchGlyph: isActive ? '■' : '▶',
+          launchDisabled: !canLaunch,
+          launchTitle: !engine ? 'engine not running' : (!isValid ? (v.error || 'invalid code') : (isActive ? 'stop' : 'start')),
+          deleteGlyph: cArmed ? '✓' : '✕',
+          deleteTitle: cArmed ? 'click again to confirm delete' : 'delete this text',
+          onToggle: () => canLaunch && this.toggleCell(track.id, cell.id),
+          onInput: (e) => this.editCode(track.id, cell.id, e.target.value),
+          onKeyDown: (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e.target.blur(); } },
+          onFocus: () => this.setState({ focusCell: cell.id }),
+          onBlur: () => this.setState(s => (s.focusCell === cell.id ? { focusCell: null } : {})),
+          onEnter: () => this.setState({ hoverCell: cell.id }),
+          onLeave: () => this.setState(s => (s.hoverCell === cell.id ? { hoverCell: null } : {})),
+          onDelete: () => this.removeCell(track.id, cell.id),
+          onDragStart: (e) => { e.stopPropagation(); if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'; this.startDragCell(track.id, cell.id); },
+          onDragEnd: this.endDrag,
+          onDragOver: (e) => { if (drag && drag.kind === 'cell') { e.preventDefault(); e.stopPropagation(); this.setOver({ kind: 'cell', id: cell.id }); } },
+          onDrop: (e) => { if (drag && drag.kind === 'cell') { e.preventDefault(); e.stopPropagation(); this.moveCell(track.id, cell.id); } },
+        };
+      });
+
+      const overAdd = over && over.kind === 'add' && over.id === track.id && drag && drag.kind === 'cell';
+      return {
+        id: track.id, name: track.name, cells,
+        statusLabel: playing ? 'PLAYING' : 'silent',
+        rowStyle: `display:flex; align-items:stretch; margin-bottom:10px; border-radius:8px; opacity:${isDraggingT ? 0.4 : 1}; box-shadow:${isOverT ? '0 -3px 0 0 oklch(0.78 0.02 260)' : 'none'}; transition:opacity .12s, box-shadow .12s;`,
+        gutterStyle: `flex:none; width:264px; display:flex; align-items:stretch; gap:8px; padding:8px 8px 8px 2px; margin-right:12px; border-right:1px solid oklch(0.24 0.01 260);`,
+        vol: track.vol, flt: track.flt, dly: track.dly,
+        volTrackStyle: this.sliderBg(track.vol, track.hue),
+        fltTrackStyle: this.sliderBg(track.flt, track.hue),
+        dlyTrackStyle: this.sliderBg(track.dly, track.hue),
+        onVol: (e) => this.setCtrl(track.id, 'vol', e.target.value),
+        onFlt: (e) => this.setCtrl(track.id, 'flt', e.target.value),
+        onDly: (e) => this.setCtrl(track.id, 'dly', e.target.value),
+        gripStyle: `cursor:grab; user-select:none; color:oklch(0.42 0.01 260); font-size:13px; line-height:1; padding:1px;`,
+        accentBarStyle: `flex:none; width:4px; align-self:stretch; border-radius:3px; background:${accColor}; box-shadow:${playing ? `0 0 12px ${accColor}` : 'none'}; transition:box-shadow .2s;`,
+        nameInputStyle: `width:100%; background:transparent; border:none; outline:none; color:${playing ? accBright : 'oklch(0.85 0.008 260)'}; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14px; padding:0;`,
+        stopBtnStyle: `width:26px; height:26px; display:flex; align-items:center; justify-content:center; border-radius:6px; background:${playing ? 'oklch(0.24 0.01 260)' : 'transparent'}; color:${playing ? 'oklch(0.85 0.008 260)' : 'oklch(0.4 0.01 260)'}; border:1px solid oklch(0.28 0.01 260); cursor:pointer;`,
+        removeBtnStyle: `width:26px; height:20px; display:flex; align-items:center; justify-content:center; border-radius:6px; background:${trkArmed ? 'oklch(0.52 0.19 25)' : 'transparent'}; color:${trkArmed ? 'oklch(0.97 0.02 25)' : 'oklch(0.4 0.01 260)'}; border:1px solid ${trkArmed ? 'oklch(0.55 0.16 25)' : 'transparent'}; cursor:pointer; font-size:11px; ${trkArmed ? 'animation:rt-pulse 1s ease-in-out infinite;' : ''}`,
+        removeGlyph: trkArmed ? '✓' : '✕',
+        removeTitle: trkArmed ? 'click again to confirm — deletes track' : 'remove track',
+        addCellStyle: `flex:none; width:52px; min-height:64px; display:flex; align-items:center; justify-content:center; border-radius:8px; background:${overAdd ? 'oklch(0.24 0.01 260)' : 'transparent'}; color:oklch(0.4 0.01 260); border:1px dashed ${overAdd ? 'oklch(0.6 0.02 260)' : 'oklch(0.3 0.01 260)'}; cursor:pointer; transition:all .12s;`,
+        onRename: (e) => this.renameTrack(track.id, e.target.value),
+        onStop: () => this.stopTrack(track.id),
+        onRemove: () => this.removeTrack(track.id),
+        onAddCell: () => this.addCell(track.id),
+        onDragStart: (e) => { if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'; this.startDragTrack(track.id); },
+        onDragEnd: this.endDrag,
+        onRowDragOver: (e) => { if (drag && drag.kind === 'track') { e.preventDefault(); this.setOver({ kind: 'track', id: track.id }); } },
+        onRowDrop: (e) => { if (drag && drag.kind === 'track') { e.preventDefault(); this.moveTrack(track.id); } },
+        onAddDragOver: (e) => { if (drag && drag.kind === 'cell') { e.preventDefault(); e.stopPropagation(); this.setOver({ kind: 'add', id: track.id }); } },
+        onAddDrop: (e) => { if (drag && drag.kind === 'cell') { e.preventDefault(); e.stopPropagation(); this.moveCell(track.id, null); } },
+      };
+    });
+
+    const activeCount = gridTracks.filter(t => t.active != null).length;
+
+    // ---------- SCORE ----------
+    const ph = st.playhead;
+    const loopStart = st.loopStart, loopEnd = st.loopEnd;
+    const loopOn = st.loopOn;
+    const effLo = loopOn ? loopStart : 0, effHi = loopOn ? loopEnd : total;
+    const curBar = Math.max(0, Math.min(total - 1, Math.floor(ph)));
+    const playing = st.playing;
+    const scoreRows = gridTracks.map(track => {
+      const accColor = this.accent(track.hue, 0.72, 0.15);
+      const accBright = this.accent(track.hue, 0.82, 0.16);
+      const score = track.score || new Array(total).fill(false);
+      const hasPaint = score.some(Boolean);
+      const onNow = playing && !!score[curBar] && hasPaint && curBar >= effLo && curBar < effHi;
+      const selCell = (track.selected && track.cells.find(c => c.id === track.selected)) || track.cells[0] || null;
+      const schedCode = selCell ? selCell.code : '';
+      const schedLabel = schedCode ? (schedCode.length > 30 ? schedCode.slice(0, 29) + '…' : schedCode) : 'no variation set';
+      const cells = score.map((p, bar) => {
+        const isCur = bar === curBar;
+        const group = bar % 4 === 0;
+        const inLoop = bar >= effLo && bar < effHi;
+        let bg, bs = 'none';
+        if (p) {
+          if (isCur && playing) { bg = accBright; bs = `inset 0 0 0 1px ${accBright}, 0 0 14px ${accColor}`; }
+          else { bg = this.accent(track.hue, 0.42, 0.11); }
+        } else { bg = (isCur && playing) ? 'oklch(0.225 0.01 260)' : 'oklch(0.178 0.008 260)'; }
+        const style = `border-left:1px solid ${group ? 'oklch(0.29 0.01 260)' : 'oklch(0.21 0.01 260)'}; background:${bg}; box-shadow:${bs}; opacity:${inLoop ? 1 : 0.3}; cursor:pointer; user-select:none; transition:background .08s, opacity .12s;`;
+        return { style, onDown: () => this.startPaint(track.id, bar), onEnter: () => this.paintEnter(track.id, bar) };
+      });
+      return {
+        name: track.name,
+        schedLabel,
+        schedStyle: `font-size:9.5px; font-family:'JetBrains Mono',monospace; color:${onNow ? accBright : 'oklch(0.5 0.01 260)'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px;`,
+        accentStyle: `flex:none; width:3px; align-self:stretch; margin:7px 0; border-radius:2px; background:${accColor}; box-shadow:${onNow ? `0 0 8px ${accColor}` : 'none'};`,
+        nameStyle: `font-family:'Space Grotesk',sans-serif; font-size:12px; font-weight:600; color:${onNow ? accBright : 'oklch(0.78 0.008 260)'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;`,
+        dotStyle: `flex:none; width:8px; height:8px; border-radius:50%; background:${onNow ? accBright : 'transparent'}; border:1px solid ${onNow ? accBright : 'oklch(0.34 0.01 260)'}; box-shadow:${onNow ? `0 0 8px ${accColor}` : 'none'}; ${onNow ? 'animation:rt-pulse 1.4s ease-in-out infinite;' : ''}`,
+        cells,
+      };
+    });
+    const scoreEmpty = gridTracks.length > 0 && gridTracks.every(t => !(t.score && t.score.some(Boolean)));
+    const rulerCells = Array.from({ length: total }, (_, bar) => {
+      const inLoop = bar >= effLo && bar < effHi;
+      return {
+        label: (bar % 4 === 0) ? String(bar + 1) : '',
+        style: `display:flex; align-items:center; padding-left:4px; font-size:8px; letter-spacing:0.5px; opacity:${inLoop ? 1 : 0.4}; color:${bar === curBar && playing ? 'oklch(0.82 0.1 200)' : 'oklch(0.45 0.01 260)'}; border-left:1px solid ${bar % 4 === 0 ? 'oklch(0.29 0.01 260)' : 'transparent'};`,
+      };
+    });
+    const startPct = (loopStart / total) * 100, endPct = (loopEnd / total) * 100;
+    const playheadStyle = `position:absolute; top:0; bottom:0; width:2px; left:${(ph / total) * 100}%; background:oklch(0.93 0.06 200); box-shadow:0 0 10px oklch(0.8 0.14 200), 0 0 3px oklch(0.9 0.1 200);`;
+    const loopShadeLeftStyle = `position:absolute; top:0; bottom:0; left:0; width:${startPct}%; background:oklch(0.1 0.005 260 / 0.5); pointer-events:none; ${loopOn ? '' : 'display:none;'}`;
+    const loopShadeRightStyle = `position:absolute; top:0; bottom:0; left:${endPct}%; right:0; background:oklch(0.1 0.005 260 / 0.5); pointer-events:none; ${loopOn ? '' : 'display:none;'}`;
+    const limStartStyle = `position:absolute; top:0; bottom:0; left:${startPct}%; transform:translateX(-50%); ${loopOn ? 'display:flex;' : 'display:none;'} justify-content:center; pointer-events:none; z-index:7;`;
+    const limEndStyle = `position:absolute; top:0; bottom:0; left:${endPct}%; transform:translateX(-50%); ${loopOn ? 'display:flex;' : 'display:none;'} justify-content:center; pointer-events:none; z-index:7;`;
+    const limLineStyle = `width:2px; height:100%; background:oklch(0.7 0.11 200); pointer-events:none;`;
+    const limTabStyle = `position:absolute; top:0; width:16px; height:16px; display:flex; align-items:center; justify-content:center; background:oklch(0.32 0.06 200); border:1px solid oklch(0.55 0.1 200); border-radius:4px; color:oklch(0.92 0.06 200); font-size:10px; line-height:1; cursor:ew-resize; pointer-events:auto;`;
+    const loopMoveStyle = `position:absolute; top:0; left:${startPct}%; width:${Math.max(0, endPct - startPct)}%; height:16px; ${loopOn ? 'display:flex;' : 'display:none;'} align-items:center; justify-content:center; cursor:grab; pointer-events:auto; z-index:6;`;
+    const loopMoveGripStyle = `width:30px; height:4px; border-radius:2px; background:oklch(0.6 0.09 200); box-shadow:0 0 6px oklch(0.5 0.09 200);`;
+    const loopToggleStyle = `display:flex; align-items:center; gap:7px; height:26px; padding:0 11px; border-radius:7px; font-family:'Space Grotesk',sans-serif; font-size:10px; font-weight:600; letter-spacing:0.5px; cursor:pointer; border:1px solid ${loopOn ? 'oklch(0.4 0.07 200)' : 'oklch(0.3 0.01 260)'}; background:${loopOn ? 'oklch(0.2 0.03 200)' : 'transparent'}; color:${loopOn ? 'oklch(0.82 0.08 200)' : 'oklch(0.5 0.01 260)'};`;
+    const loopDotStyle = `width:9px; height:9px; border-radius:50%; border:1.5px solid ${loopOn ? 'oklch(0.72 0.12 200)' : 'oklch(0.45 0.01 260)'}; background:${loopOn ? 'oklch(0.72 0.12 200)' : 'transparent'}; box-shadow:${loopOn ? '0 0 6px oklch(0.7 0.12 200)' : 'none'};`;
+    const loopToggleLabel = loopOn ? 'LOOP' : 'LOOP OFF';
+    const barPosLabel = `BAR ${curBar + 1} · ${loopOn ? 'LOOP ' + (loopStart + 1) + '–' + loopEnd : 'no loop'}`;
+    const scorePlayBtnStyle = `display:flex; align-items:center; gap:8px; height:28px; padding:0 14px; border-radius:7px; font-family:'Space Grotesk',sans-serif; font-size:11px; font-weight:600; letter-spacing:0.5px; cursor:pointer; border:1px solid ${playing ? 'oklch(0.42 0.1 25)' : 'oklch(0.4 0.08 200)'}; background:${playing ? 'oklch(0.24 0.03 25)' : 'oklch(0.22 0.03 200)'}; color:${playing ? 'oklch(0.82 0.11 25)' : 'oklch(0.82 0.09 200)'};`;
+    const playGlyphStyle = playing
+      ? `width:9px; height:9px; background:currentColor; border-radius:2px;`
+      : `width:0; height:0; border-left:9px solid currentColor; border-top:5px solid transparent; border-bottom:5px solid transparent;`;
+
+    // ---------- SONGS rail ----------
+    const songsVM = st.songs.map(so => {
+      const isCur = so.id === st.currentSongId;
+      const editing = st.editing && st.editing.type === 'song' && st.editing.id === so.id;
+      const live = so.tracks.filter(t => t.active != null).length;
+      const armed = st.confirm === 'song:' + so.id;
+      return {
+        id: so.id, name: so.name, editing: !!editing, notEditing: !editing,
+        meta: so.tracks.length + (so.tracks.length === 1 ? ' track' : ' tracks') + (live ? ' · ' + live + ' live' : ''),
+        rowStyle: `position:relative; display:flex; align-items:center; gap:6px; padding:8px 8px 8px 12px; margin-bottom:3px; border-radius:8px; background:${isCur ? 'oklch(0.23 0.015 200)' : 'transparent'}; border:1px solid ${isCur ? 'oklch(0.4 0.05 200)' : 'transparent'};`,
+        accentStyle: `position:absolute; left:4px; top:9px; bottom:9px; width:3px; border-radius:2px; background:${isCur ? 'oklch(0.72 0.14 200)' : 'transparent'};`,
+        nameStyle: `font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13px; color:${isCur ? 'oklch(0.95 0.02 200)' : 'oklch(0.82 0.008 260)'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;`,
+        deleteStyle: `width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:5px; border:none; background:${armed ? 'oklch(0.52 0.19 25)' : 'transparent'}; color:${armed ? 'oklch(0.97 0.02 25)' : 'oklch(0.5 0.01 260)'}; font-size:11px; cursor:pointer; ${armed ? 'animation:rt-pulse 1s ease-in-out infinite;' : ''}`,
+        deleteGlyph: armed ? '✓' : '✕',
+        deleteTitle: armed ? 'click again to confirm — deletes song' : 'delete song',
+        onOpen: () => this.openSong(so.id), onEdit: () => this.startEdit('song', so.id), onDuplicate: () => this.duplicateSong(so.id), onDelete: () => this.deleteSong(so.id),
+        onNameInput: (e) => this.renameSong(so.id, e.target.value), onNameBlur: this.stopEdit, onNameKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } },
+      };
+    });
+
+    // ---------- TOOLBOXES rail ----------
+    const toolboxesVM = st.toolboxes.map(t => {
+      const isCur = t.id === st.currentToolboxId;
+      const editing = st.editing && st.editing.type === 'tbx' && st.editing.id === t.id;
+      const invalid = t.blocks.filter(b => b.code.trim() && !this.validate(b.code).valid).length;
+      const unsaved = t.blocks.filter(b => b.code !== b.applied).length;
+      const armed = st.confirm === 'tbx:' + t.id;
+      let metaTxt = t.blocks.length + (t.blocks.length === 1 ? ' def' : ' defs');
+      if (invalid) metaTxt += ' · ' + invalid + ' broken';
+      else if (unsaved) metaTxt += ' · ' + unsaved + ' unsaved';
+      return {
+        id: t.id, name: t.name, editing: !!editing, notEditing: !editing, meta: metaTxt,
+        metaStyle: `font-size:9.5px; margin-top:2px; color:${invalid ? 'oklch(0.62 0.14 25)' : (unsaved ? 'oklch(0.68 0.1 65)' : 'oklch(0.5 0.01 260)')};`,
+        rowStyle: `position:relative; display:flex; align-items:center; gap:6px; padding:8px 8px 8px 12px; margin-bottom:3px; border-radius:8px; background:${isCur ? 'oklch(0.22 0.02 300)' : 'transparent'}; border:1px solid ${isCur ? 'oklch(0.4 0.06 300)' : 'transparent'};`,
+        accentStyle: `position:absolute; left:4px; top:9px; bottom:9px; width:3px; border-radius:2px; background:${isCur ? 'oklch(0.72 0.14 300)' : 'transparent'};`,
+        nameStyle: `font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13px; color:${isCur ? 'oklch(0.95 0.02 300)' : 'oklch(0.82 0.008 260)'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;`,
+        deleteStyle: `width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:5px; border:none; background:${armed ? 'oklch(0.52 0.19 25)' : 'transparent'}; color:${armed ? 'oklch(0.97 0.02 25)' : 'oklch(0.5 0.01 260)'}; font-size:11px; cursor:pointer; ${armed ? 'animation:rt-pulse 1s ease-in-out infinite;' : ''}`,
+        deleteGlyph: armed ? '✓' : '✕',
+        deleteTitle: armed ? 'click again to confirm — deletes toolbox' : 'delete toolbox',
+        onOpen: () => this.openToolbox(t.id), onEdit: () => this.startEdit('tbx', t.id), onDuplicate: () => this.duplicateToolbox(t.id), onDelete: () => this.deleteToolbox(t.id),
+        onNameInput: (e) => this.renameToolbox(t.id, e.target.value), onNameBlur: this.stopEdit, onNameKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } },
+      };
+    });
+
+    // ---------- BLOCKS ----------
+    const blocks = tbx ? tbx.blocks : [];
+    const blocksVM = blocks.map(b => {
+      const v = this.validate(b.code);
+      const valid = !!v.valid;
+      const unsaved = b.code !== b.applied;
+      const casc = valid ? { count: 0, list: [] } : this.cascadeFor(this.definedNames(b.applied).concat(this.definedNames(b.code)).filter((x, i, a) => a.indexOf(x) === i));
+      let appliedText, appliedBadge;
+      if (unsaved) { appliedText = '● UNSAVED'; appliedBadge = `font-size:8.5px; font-weight:700; letter-spacing:0.5px; padding:2px 7px; border-radius:20px; background:oklch(0.24 0.04 65); color:oklch(0.78 0.11 65);`; }
+      else { appliedText = 'APPLIED'; appliedBadge = `font-size:8.5px; font-weight:700; letter-spacing:0.5px; padding:2px 7px; border-radius:20px; background:oklch(0.22 0.02 155); color:oklch(0.66 0.08 155);`; }
+      const canApply = valid && unsaved;
+      return {
+        id: b.id, name: b.name, code: b.code,
+        invalid: !valid && !!b.code.trim(),
+        error: v.error || '',
+        hasCascade: casc.count > 0, cascadeCount: casc.count, cascadeNoun: casc.count === 1 ? 'snippet' : 'snippets', cascadeList: casc.list,
+        appliedText, appliedBadge,
+        statusText: valid ? '✓ parses' : (b.code.trim() ? '✕ invalid' : 'empty'),
+        statusStyle: `font-size:9.5px; font-weight:600; letter-spacing:0.3px; color:${valid ? 'oklch(0.66 0.09 155)' : (b.code.trim() ? 'oklch(0.66 0.16 25)' : 'oklch(0.5 0.01 260)')};`,
+        cardStyle: `padding:13px 15px 15px; border-radius:10px; background:oklch(0.175 0.008 260); border:1px solid ${!valid && b.code.trim() ? 'oklch(0.42 0.13 25)' : 'oklch(0.27 0.01 260)'};`,
+        codeStyle: `width:100%; min-height:44px; resize:vertical; outline:none; background:oklch(0.13 0.008 260); border:1px solid oklch(0.26 0.01 260); border-radius:7px; color:${valid ? 'oklch(0.88 0.008 260)' : 'oklch(0.86 0.05 25)'}; font-size:13px; line-height:1.55; padding:9px 11px;`,
+        applyLabel: (!unsaved && valid) ? 'Applied ✓' : 'Apply',
+        applyDisabled: !canApply,
+        applyTitle: !valid ? 'fix parse error to apply' : (!unsaved ? 'already applied to live scope' : 'apply to live scope'),
+        applyStyle: `height:26px; padding:0 12px; border-radius:6px; font-family:'Space Grotesk',sans-serif; font-size:11px; font-weight:600; cursor:${canApply ? 'pointer' : 'not-allowed'}; border:1px solid ${canApply ? 'oklch(0.5 0.11 155)' : 'oklch(0.28 0.01 260)'}; background:${canApply ? 'oklch(0.32 0.08 155)' : 'transparent'}; color:${canApply ? 'oklch(0.9 0.09 155)' : 'oklch(0.45 0.01 260)'};`,
+        deleteStyle: `width:24px; height:24px; display:flex; align-items:center; justify-content:center; border-radius:6px; border:1px solid ${st.confirm === 'blk:' + b.id ? 'oklch(0.55 0.16 25)' : 'transparent'}; background:${st.confirm === 'blk:' + b.id ? 'oklch(0.52 0.19 25)' : 'transparent'}; color:${st.confirm === 'blk:' + b.id ? 'oklch(0.97 0.02 25)' : 'oklch(0.5 0.01 260)'}; font-size:11px; cursor:pointer; ${st.confirm === 'blk:' + b.id ? 'animation:rt-pulse 1s ease-in-out infinite;' : ''}`,
+        deleteGlyph: st.confirm === 'blk:' + b.id ? '✓' : '✕',
+        deleteTitle: st.confirm === 'blk:' + b.id ? 'click again to confirm delete' : 'delete definition',
+        onName: (e) => this.renameBlock(b.id, e.target.value),
+        onCode: (e) => this.editBlockCode(b.id, e.target.value),
+        onApply: () => this.applyBlock(b.id),
+        onDelete: () => this.deleteBlock(b.id),
+      };
+    });
+    const anyApplyable = blocks.some(b => b.code !== b.applied && this.validate(b.code).valid);
+    const unsavedCount = blocks.filter(b => b.code !== b.applied).length;
+    const invalidCount = blocks.filter(b => b.code.trim() && !this.validate(b.code).valid).length;
+    let tbxStat, tbxStatColor;
+    if (invalidCount) { tbxStat = invalidCount + (invalidCount === 1 ? ' broken block' : ' broken blocks'); tbxStatColor = 'oklch(0.68 0.15 25)'; }
+    else if (unsavedCount) { tbxStat = unsavedCount + ' unsaved'; tbxStatColor = 'oklch(0.72 0.11 65)'; }
+    else { tbxStat = 'all applied'; tbxStatColor = 'oklch(0.66 0.09 155)'; }
+
+    const scopeInvalid = tbx ? tbx.blocks.some(b => b.code.trim() && !this.validate(b.code).valid) : false;
+    const scopeName = tbx ? tbx.name : 'none';
+
+    return {
+      isSong, isDefs,
+      goSong: this.goSong, goDefs: this.goDefs,
+      songTabStyle: tabBase + (isSong ? tabOn : tabOff),
+      defsTabStyle: tabBase + (isDefs ? tabOn : tabOff),
+      songPageStyle: isSong ? 'display:flex; flex:1; min-height:0;' : 'display:none;',
+      defsPageStyle: isDefs ? 'display:flex; flex:1; min-height:0;' : 'display:none;',
+
+      // topbar
+      scopeName,
+      scopeChipStyle: `display:flex; align-items:center; gap:7px; height:28px; padding:0 11px; border-radius:7px; cursor:pointer; font-size:11px; font-family:'Space Grotesk',sans-serif; background:oklch(0.2 0.01 260); border:1px solid ${scopeInvalid ? 'oklch(0.42 0.1 25)' : 'oklch(0.3 0.01 260)'}; color:oklch(0.82 0.01 260);`,
+      scopeDotStyle: `width:7px; height:7px; border-radius:50%; background:${scopeInvalid ? 'oklch(0.66 0.18 25)' : 'oklch(0.7 0.14 300)'}; box-shadow:0 0 7px ${scopeInvalid ? 'oklch(0.66 0.18 25)' : 'oklch(0.7 0.14 300)'}; ${scopeInvalid ? 'animation:rt-pulse 1s ease-in-out infinite;' : ''}`,
+      toggleEngine: this.toggleEngine, hush: this.hush,
+      activeCountLabel: activeCount > 0 ? `${activeCount} playing` : 'idle',
+      engineLabel: engine ? 'engine connected' : 'engine not running',
+      engineBtnStyle: `display:flex; align-items:center; gap:8px; height:30px; padding:0 12px; border-radius:7px; font-size:11px; letter-spacing:0.3px; cursor:pointer; background:${engine ? 'oklch(0.22 0.03 155)' : 'oklch(0.22 0.03 25)'}; color:${engine ? 'oklch(0.82 0.09 155)' : 'oklch(0.8 0.1 25)'}; border:1px solid ${engine ? 'oklch(0.4 0.08 155)' : 'oklch(0.42 0.12 25)'};`,
+      engineDotStyle: `width:8px; height:8px; border-radius:50%; background:${engine ? 'oklch(0.72 0.16 155)' : 'oklch(0.66 0.18 25)'}; box-shadow:0 0 8px ${engine ? 'oklch(0.72 0.16 155)' : 'oklch(0.66 0.18 25)'}; ${engine ? '' : 'animation:rt-pulse 1s ease-in-out infinite;'}`,
+      hushBtnStyle: `display:flex; align-items:center; gap:8px; height:32px; padding:0 16px; border-radius:7px; font-size:12px; font-weight:700; cursor:pointer; background:oklch(0.24 0.03 25); color:oklch(0.82 0.11 25); border:1px solid oklch(0.42 0.1 25);`,
+
+      // songs
+      songCount: st.songs.length,
+      songsVM, songsEmpty: st.songs.length === 0, newSong: this.newSong,
+      toggleSongRail: this.toggleSongRail,
+      songRailFullStyle: st.songRailOpen ? 'flex:none; width:242px; display:flex; flex-direction:column; background:oklch(0.165 0.009 260); border-right:1px solid oklch(0.25 0.01 260);' : 'display:none;',
+      songRailMiniStyle: st.songRailOpen ? 'display:none;' : 'flex:none; width:44px; display:flex; flex-direction:column; align-items:center; gap:8px; padding:10px 0; background:oklch(0.165 0.009 260); border-right:1px solid oklch(0.25 0.01 260);',
+      triggerSongImport: this.triggerSongImport, exportSong: this.exportSong, songFileRef: this.songFileRef, onImportSongFile: this.onImportSongFile,
+      hasSongStyle: song ? 'flex:1; display:flex; flex-direction:column; min-height:0;' : 'display:none;',
+      noSongStyle: song ? 'display:none;' : 'flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; color:oklch(0.5 0.01 260);',
+      songName: song ? song.name : '',
+      onSongName: (e) => { const v = e.target.value; this.setState(s => ({ songs: s.songs.map(so => so.id !== s.currentSongId ? so : ({ ...so, name: v })) })); },
+      songMeta: song ? (gridTracks.length + ' tracks · ' + activeCount + ' live') : '',
+      tracks, addTrack: this.addTrack,
+
+      // score
+      scorePanelStyle: `flex:none; height:${st.scoreHeight}px; display:flex; flex-direction:column; background:oklch(0.155 0.008 260); border-top:1px solid oklch(0.27 0.01 260); position:relative;`,
+      resizeHandleStyle: `flex:none; height:16px; display:flex; align-items:center; justify-content:center; cursor:ns-resize; user-select:none; z-index:6; background:${st.resizing ? 'oklch(0.24 0.03 200)' : 'oklch(0.175 0.008 260)'}; transition:background .1s;`,
+      resizeGripStyle: `width:44px; height:4px; border-radius:2px; background:${st.resizing ? 'oklch(0.72 0.1 200)' : 'oklch(0.4 0.01 260)'}; box-shadow:${st.resizing ? '0 0 8px oklch(0.6 0.1 200)' : 'none'}; transition:all .1s;`,
+      onResizeStart: this.onResizeStart,
+      scoreRows, rulerCells, playheadStyle, barPosLabel, scorePlayBtnStyle, playGlyphStyle,
+      playLabel: playing ? 'STOP' : 'PLAY',
+      onTogglePlay: this.onTogglePlay,
+      scoreEmpty,
+      laneRef: this.laneRef,
+      loopShadeLeftStyle, loopShadeRightStyle, limStartStyle, limEndStyle, limLineStyle, limTabStyle,
+      loopMoveStyle, loopMoveGripStyle, loopToggleStyle, loopDotStyle, loopToggleLabel,
+      onLimStartDown: this.onLimStartDown, onLimEndDown: this.onLimEndDown,
+      onLoopMoveDown: this.onLoopMoveDown, toggleLoop: this.toggleLoop,
+
+      // defs
+      toolboxesVM, toolboxesEmpty: st.toolboxes.length === 0, newToolbox: this.newToolbox,
+      triggerImport: this.triggerImport, exportToolbox: this.exportToolbox, fileRef: this.fileRef, onImportFile: this.onImportFile,
+      toggleToolboxRail: this.toggleToolboxRail,
+      toolboxRailFullStyle: st.toolboxRailOpen ? 'flex:none; width:242px; display:flex; flex-direction:column; background:oklch(0.165 0.009 260); border-right:1px solid oklch(0.25 0.01 260);' : 'display:none;',
+      toolboxRailMiniStyle: st.toolboxRailOpen ? 'display:none;' : 'flex:none; width:44px; display:flex; flex-direction:column; align-items:center; gap:8px; padding:10px 0; background:oklch(0.165 0.009 260); border-right:1px solid oklch(0.25 0.01 260);',
+      hasToolboxStyle: tbx ? 'flex:1; display:flex; flex-direction:column; min-height:0;' : 'display:none;',
+      noToolboxStyle: tbx ? 'display:none;' : 'flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; color:oklch(0.5 0.01 260);',
+      tbxName: tbx ? tbx.name : '',
+      onTbxName: (e) => { const v = e.target.value; this.setState(s => ({ toolboxes: s.toolboxes.map(t => t.id !== s.currentToolboxId ? t : ({ ...t, name: v })) })); },
+      tbxStat, tbxStatStyle: `color:${tbxStatColor}; font-weight:600;`,
+      applyAll: this.applyAll, applyAllDisabled: !anyApplyable,
+      applyAllLabel: anyApplyable ? 'Apply all' : 'All applied',
+      applyAllStyle: `height:32px; padding:0 16px; border-radius:8px; font-family:'Space Grotesk',sans-serif; font-size:12px; font-weight:600; cursor:${anyApplyable ? 'pointer' : 'not-allowed'}; border:1px solid ${anyApplyable ? 'oklch(0.5 0.11 155)' : 'oklch(0.28 0.01 260)'}; background:${anyApplyable ? 'oklch(0.3 0.07 155)' : 'transparent'}; color:${anyApplyable ? 'oklch(0.9 0.09 155)' : 'oklch(0.45 0.01 260)'};`,
+      blocksVM, blocksEmpty: !!tbx && tbx.blocks.length === 0, addBlock: this.addBlock,
+
+      // toast
+      toast: st.toast || '',
+      toastStyle: `position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(${st.toast ? '0' : '12px'}); padding:9px 16px; background:oklch(0.24 0.01 260); border:1px solid oklch(0.36 0.01 260); border-radius:8px; font-size:11.5px; color:oklch(0.9 0.006 260); box-shadow:0 8px 24px oklch(0.05 0.01 260 / 0.5); opacity:${st.toast ? 1 : 0}; pointer-events:none; transition:all .18s; z-index:50;`,
+    };
+  }
+}
+</script>
+</body>
+</html>

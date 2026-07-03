@@ -1,0 +1,12 @@
+package:
+  name: riptide-frontend
+  dependencies:
+    - aff
+    - console
+    - effect
+    - halogen
+    - prelude
+workspace:
+  packageSet:
+    registry: 72.1.0
+  extraPackages: {}

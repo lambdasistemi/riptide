@@ -2,9 +2,9 @@
 
 ## Slice 1: frontend project skeleton
 
-- [ ] T003-S1 Create the frontend PureScript app files and static shell.
-- [ ] T003-S1 Commit `spago.lock`, `package-lock.json`, and copied design references.
-- [ ] T003-S1 Prove the skeleton with a focused frontend build or documented pre-Nix smoke.
+- [X] T003-S1 Create the frontend PureScript app files and static shell.
+- [X] T003-S1 Commit `spago.lock`, `package-lock.json`, and copied design references.
+- [X] T003-S1 Prove the skeleton with a focused frontend build or documented pre-Nix smoke.
 
 ## Slice 2: Nix frontend package and shell
 

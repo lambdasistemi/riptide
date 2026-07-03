@@ -1,0 +1,8 @@
+set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
+
+lint:
+    npm ci
+    npm run build
+
+build:
+    npm run build
