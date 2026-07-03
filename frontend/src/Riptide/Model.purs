@@ -123,7 +123,8 @@ type DragState =
 
 type DropTarget =
   { kind :: String
-  , id :: String
+  , trackId :: TrackId
+  , cellId :: Maybe CellId
   }
 
 type PaintState =

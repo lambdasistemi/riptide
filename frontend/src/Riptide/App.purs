@@ -11,7 +11,7 @@ import Data.Traversable (traverse)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Riptide.Action (ControlKey)
-import Riptide.Model (App, BlockId, CellId, Page(..), Song, SongId, Toolbox, ToolboxId, TrackId)
+import Riptide.Model (App, BlockId, CellId, DropTarget, Page(..), Song, SongId, Toolbox, ToolboxId, TrackId)
 import Riptide.Reducer as Reducer
 import Riptide.Validation (valid)
 import Riptide.View.Definitions as Definitions
@@ -20,6 +20,9 @@ import Riptide.View.Playhead as Playhead
 import Riptide.View.Seed (seedApp)
 import Riptide.View.Shell as Shell
 import Riptide.View.Song as Song
+import Web.Event.Event as Event
+import Web.HTML.Event.DragEvent (DragEvent)
+import Web.HTML.Event.DragEvent as DragEvent
 
 data Action
   = Initialize
@@ -60,6 +63,11 @@ data Action
   | StartPaint TrackId Int
   | PaintEnter TrackId Int
   | StopPaint
+  | StartTrackDrag TrackId
+  | StartCellDrag TrackId CellId
+  | DragOver DropTarget DragEvent
+  | DropOn DropTarget DragEvent
+  | EndDrag
   | TogglePlay
   | ToggleLoop
   | SetLoopStart String
@@ -116,6 +124,11 @@ songActions =
   , startPaint: StartPaint
   , paintEnter: PaintEnter
   , stopPaint: StopPaint
+  , startTrackDrag: StartTrackDrag
+  , startCellDrag: StartCellDrag
+  , dragOver: DragOver
+  , dropOn: DropOn
+  , endDrag: EndDrag
   , togglePlay: TogglePlay
   , toggleLoop: ToggleLoop
   , setLoopStart: SetLoopStart
@@ -252,6 +265,31 @@ handleAction = case _ of
     H.modify_ (Reducer.paintEnter trackId bar)
   StopPaint ->
     H.modify_ Reducer.stopPaint
+  StartTrackDrag trackId ->
+    H.modify_ \app ->
+      app
+        { drag = Just { kind: "track", trackId, cellId: Nothing }
+        , over = Nothing
+        , confirm = Nothing
+        }
+  StartCellDrag trackId cellId ->
+    H.modify_ \app ->
+      app
+        { drag = Just { kind: "cell", trackId, cellId: Just cellId }
+        , over = Nothing
+        , confirm = Nothing
+        }
+  DragOver target event -> do
+    H.liftEffect (Event.preventDefault (DragEvent.toEvent event))
+    H.liftEffect (Event.stopPropagation (DragEvent.toEvent event))
+    H.modify_ \app ->
+      if acceptsDrop target app then app { over = Just target } else app { over = Nothing }
+  DropOn target event -> do
+    H.liftEffect (Event.preventDefault (DragEvent.toEvent event))
+    H.liftEffect (Event.stopPropagation (DragEvent.toEvent event))
+    H.modify_ (clearDrag <<< applyDrop target)
+  EndDrag ->
+    H.modify_ clearDrag
   TogglePlay -> do
     H.modify_ Reducer.togglePlay
     app <- H.get
@@ -317,3 +355,36 @@ cellIsLaunchable trackId cellId app =
             Nothing -> false
         Nothing -> false
     Nothing -> false
+
+acceptsDrop :: DropTarget -> App -> Boolean
+acceptsDrop target app =
+  case app.drag of
+    Just drag
+      | drag.kind == "track" ->
+          target.kind == "track" && drag.trackId /= target.trackId
+      | drag.kind == "cell" ->
+          target.kind == "cell" || target.kind == "cell-append"
+    _ ->
+      false
+
+applyDrop :: DropTarget -> App -> App
+applyDrop target app =
+  if not (acceptsDrop target app) then
+    app
+  else
+    case app.drag of
+      Just drag
+        | drag.kind == "track" && target.kind == "track" ->
+            Reducer.moveTrack drag.trackId target.trackId app
+        | drag.kind == "cell" ->
+            case drag.cellId of
+              Just cellId ->
+                Reducer.moveCell drag.trackId cellId target.trackId target.cellId app
+              Nothing ->
+                app
+      _ ->
+        app
+
+clearDrag :: App -> App
+clearDrag app =
+  app { drag = Nothing, over = Nothing }

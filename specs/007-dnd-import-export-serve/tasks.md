@@ -7,10 +7,10 @@
 - [x] T007-S1 Commit `feat(frontend): add drag reorder reducers`.
 
 ## Slice 2 — DnD View Wiring
-- [ ] T007-S2 Add drag/over actions and handlers in `Riptide.App`.
-- [ ] T007-S2 Add explicit track and cell handles in `Riptide.View.Song`.
-- [ ] T007-S2 Render insertion/drop-target classes without breaking textareas.
-- [ ] T007-S2 Browser smoke drag handles and commit.
+- [x] T007-S2 Add drag/over actions and handlers in `Riptide.App`.
+- [x] T007-S2 Add explicit track and cell handles in `Riptide.View.Song`.
+- [x] T007-S2 Render insertion/drop-target classes without breaking textareas.
+- [x] T007-S2 Browser smoke drag handles and commit.
 
 ## Slice 3 — Import/Export Effects And Toasts
 - [ ] T007-S3 Add file/blob FFI module and PureScript wrappers.
