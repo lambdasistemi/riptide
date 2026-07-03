@@ -38,8 +38,15 @@ common language
 library
   import:          warnings, language
   hs-source-dirs:  src
-  exposed-modules: Riptide
-  build-depends:   base <5
+  exposed-modules:
+    Riptide
+    Riptide.Eval
+
+  build-depends:
+    , base     <5
+    , hint
+    , process
+    , tidal
 
 executable riptide
   import:         warnings, language
