@@ -19,9 +19,9 @@
 - [x] T007-S3 Browser smoke round-trip and commit.
 
 ## Slice 4 — Serve And Pages
-- [ ] T007-S4 Add `serve`/`dev` recipe for built `dist/`.
-- [ ] T007-S4 Add GitHub Pages workflow for `.#frontend`.
-- [ ] T007-S4 Verify static serving and commit.
+- [x] T007-S4 Add `serve`/`dev` recipe for built `dist/`.
+- [x] T007-S4 Add GitHub Pages workflow for `.#frontend`.
+- [x] T007-S4 Verify static serving and commit.
 
 ## Finalization
 - [ ] T007-F Run final gate.
