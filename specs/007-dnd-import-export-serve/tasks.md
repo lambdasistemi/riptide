@@ -24,6 +24,6 @@
 - [x] T007-S4 Verify static serving and commit.
 
 ## Finalization
-- [ ] T007-F Run final gate.
-- [ ] T007-F Open draft PR and update body.
-- [ ] T007-F Log COMPLETE with PR URL and SHA.
+- [x] T007-F Run final gate.
+- [x] T007-F Open draft PR and update body.
+- [x] T007-F Log COMPLETE with PR URL and SHA.
