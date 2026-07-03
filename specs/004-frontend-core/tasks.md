@@ -12,11 +12,11 @@
 
 ## Slice 2 — Reducers and Transforms
 
-- [ ] T004-S2 Implement all pure reducers/actions, score automation, gated
+- [X] T004-S2 Implement all pure reducers/actions, score automation, gated
       delete, and import/export transforms.
-- [ ] T004-S2 Add reducer examples and properties covering invariants,
+- [X] T004-S2 Add reducer examples and properties covering invariants,
       regenerated ids, and import/export round trips.
-- [ ] T004-S2 Pass `./gate.sh` and commit with the required trailer.
+- [X] T004-S2 Pass `./gate.sh` and commit with the required trailer.
 
 ## Finalization
 

@@ -66,3 +66,5 @@ jobs:
         run: nix build --quiet .#frontend
       - name: Lint frontend
         run: nix develop .#frontend -c just lint
+      - name: Test frontend
+        run: nix develop .#frontend -c just test

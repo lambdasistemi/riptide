@@ -7,13 +7,16 @@ package:
     - effect
     - foldable-traversable
     - halogen
+    - integers
     - maybe
     - prelude
     - strings
   test:
     main: Test.Main
     dependencies:
+      - quickcheck
       - spec
+      - spec-quickcheck
 workspace:
   packageSet:
     registry: 72.1.0
