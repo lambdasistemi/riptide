@@ -14,6 +14,6 @@
 
 ## Slice 3: frontend CI
 
-- [ ] T003-S3 Add the frontend CI job without changing existing backend jobs.
-- [ ] T003-S3 Prove `nix develop .#frontend -c just lint` succeeds.
-- [ ] T003-S3 Run the full ticket gate.
+- [X] T003-S3 Add the frontend CI job without changing existing backend jobs.
+- [X] T003-S3 Prove `nix develop .#frontend -c just lint` succeeds.
+- [X] T003-S3 Run the full ticket gate.

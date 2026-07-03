@@ -52,3 +52,17 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - name: Run HLint
         run: nix develop --quiet -c just hlint
+
+  frontend:
+    name: Frontend
+    runs-on: nixos
+    steps:
+      - uses: actions/checkout@v5
+      - uses: cachix/cachix-action@v17
+        with:
+          name: paolino
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Build frontend
+        run: nix build --quiet .#frontend
+      - name: Lint frontend
+        run: nix develop .#frontend -c just lint
