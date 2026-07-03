@@ -15,8 +15,8 @@
 - [x] T005-S2 Prove with `./gate.sh` and commit `feat(frontend): build song page`.
 
 ## Slice 3 — Definitions Page
-- [ ] T005-S3 Implement toolbox rail list/new/open/rename/duplicate/delete.
-- [ ] T005-S3 Implement block editing, validity, invalid errors, unsaved/applied badges, apply/apply-all enablement, and delete.
-- [ ] T005-S3 Render cascade warnings via `Riptide.Helpers.cascade` and live-scope warnings.
-- [ ] T005-S3 Polish empty states and responsive page layout.
-- [ ] T005-S3 Prove with `./gate.sh`, smoke both pages, and commit `feat(frontend): build definitions page`.
+- [x] T005-S3 Implement toolbox rail list/new/open/rename/duplicate/delete.
+- [x] T005-S3 Implement block editing, validity, invalid errors, unsaved/applied badges, apply/apply-all enablement, and delete.
+- [x] T005-S3 Render cascade warnings via `Riptide.Helpers.cascade` and live-scope warnings.
+- [x] T005-S3 Polish empty states and responsive page layout.
+- [x] T005-S3 Prove with `./gate.sh`, smoke both pages, and commit `feat(frontend): build definitions page`.

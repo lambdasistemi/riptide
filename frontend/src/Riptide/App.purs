@@ -11,7 +11,7 @@ import Data.Traversable (traverse)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Riptide.Action (ControlKey)
-import Riptide.Model (App, CellId, Page(..), Song, SongId, TrackId)
+import Riptide.Model (App, BlockId, CellId, Page(..), Song, SongId, Toolbox, ToolboxId, TrackId)
 import Riptide.Reducer as Reducer
 import Riptide.Validation (valid)
 import Riptide.View.Definitions as Definitions
@@ -28,9 +28,19 @@ data Action
   | NewSong
   | NewToolbox
   | OpenSong SongId
+  | OpenToolbox ToolboxId
   | RenameSong SongId String
+  | RenameToolbox ToolboxId String
   | DuplicateSong SongId
+  | DuplicateToolbox ToolboxId
   | DeleteSong SongId
+  | DeleteToolbox ToolboxId
+  | AddBlock
+  | RenameBlock BlockId String
+  | EditBlockCode BlockId String
+  | ApplyBlock BlockId
+  | ApplyAll
+  | DeleteBlock BlockId
   | RenameTrack TrackId String
   | SetCtrl TrackId ControlKey String
   | StopTrack TrackId
@@ -59,7 +69,7 @@ render app =
   Shell.render shellActions app
     case app.page of
       SongPage -> Song.render songActions app
-      DefsPage -> Definitions.render app
+      DefsPage -> Definitions.render definitionsActions app
 
 shellActions :: Shell.ShellActions Action
 shellActions =
@@ -94,6 +104,23 @@ songActions =
   , blurCell: BlurCell
   }
 
+definitionsActions :: Definitions.DefinitionsActions Action
+definitionsActions =
+  { newToolbox: NewToolbox
+  , openToolbox: OpenToolbox
+  , renameToolbox: RenameToolbox
+  , duplicateToolbox: DuplicateToolbox
+  , deleteToolbox: DeleteToolbox
+  , addBlock: AddBlock
+  , renameBlock: RenameBlock
+  , editBlockCode: EditBlockCode
+  , applyBlock: ApplyBlock
+  , applyAll: ApplyAll
+  , deleteBlock: DeleteBlock
+  , startEdit: StartEdit
+  , stopEdit: StopEdit
+  }
+
 handleAction :: forall output m. MonadAff m => Action -> H.HalogenM App Action () output m Unit
 handleAction = case _ of
   GoSong ->
@@ -118,8 +145,12 @@ handleAction = case _ of
     H.modify_ (Reducer.newToolbox toolboxId)
   OpenSong songId ->
     H.modify_ (Reducer.openSong songId)
+  OpenToolbox toolboxId ->
+    H.modify_ (Reducer.openToolbox toolboxId)
   RenameSong songId name ->
     H.modify_ (Reducer.renameSong songId name)
+  RenameToolbox toolboxId name ->
+    H.modify_ (Reducer.renameToolbox toolboxId name)
   DuplicateSong songId -> do
     app <- H.get
     case songById songId app of
@@ -130,8 +161,32 @@ handleAction = case _ of
         H.modify_ (Reducer.duplicateSong songId { songId: newSongId, trackIds, cellIds })
       Nothing ->
         pure unit
+  DuplicateToolbox toolboxId -> do
+    app <- H.get
+    case toolboxById toolboxId app of
+      Just source -> do
+        newToolboxId <- H.liftEffect (mintId "tb")
+        blockIds <- traverse (const (H.liftEffect (mintId "b"))) source.blocks
+        H.modify_ (Reducer.duplicateToolbox toolboxId { toolboxId: newToolboxId, blockIds })
+      Nothing ->
+        pure unit
   DeleteSong songId ->
     H.modify_ (Reducer.deleteSong songId)
+  DeleteToolbox toolboxId ->
+    H.modify_ (Reducer.deleteToolbox toolboxId)
+  AddBlock -> do
+    blockId <- H.liftEffect (mintId "b")
+    H.modify_ (Reducer.addBlock blockId)
+  RenameBlock blockId name ->
+    H.modify_ (Reducer.renameBlock blockId name)
+  EditBlockCode blockId code ->
+    H.modify_ (Reducer.editBlockCode blockId code)
+  ApplyBlock blockId ->
+    H.modify_ (Reducer.applyBlock blockId)
+  ApplyAll ->
+    H.modify_ Reducer.applyAll
+  DeleteBlock blockId ->
+    H.modify_ (Reducer.deleteBlock blockId)
   RenameTrack trackId name ->
     H.modify_ (Reducer.renameTrack trackId name)
   SetCtrl trackId key raw ->
@@ -173,6 +228,10 @@ handleAction = case _ of
 songById :: SongId -> App -> Maybe Song
 songById songId app =
   Array.find (_.id >>> (_ == songId)) app.songs
+
+toolboxById :: ToolboxId -> App -> Maybe Toolbox
+toolboxById toolboxId app =
+  Array.find (_.id >>> (_ == toolboxId)) app.toolboxes
 
 cellIsLaunchable :: TrackId -> CellId -> App -> Boolean
 cellIsLaunchable trackId cellId app =
