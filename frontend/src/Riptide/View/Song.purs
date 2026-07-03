@@ -13,6 +13,7 @@ import Halogen.HTML.Properties as HP
 import Riptide.Action (ControlKey(..))
 import Riptide.Model (App, Cell, CellId, EditingTarget, Song, SongId, Track, TrackId)
 import Riptide.Validation (ValidationResult, valid)
+import Riptide.View.Score as Score
 
 type SongActions action =
   { newSong :: action
@@ -34,6 +35,14 @@ type SongActions action =
   , stopEdit :: action
   , focusCell :: CellId -> action
   , blurCell :: CellId -> action
+  , startPaint :: TrackId -> Int -> action
+  , paintEnter :: TrackId -> Int -> action
+  , stopPaint :: action
+  , togglePlay :: action
+  , toggleLoop :: action
+  , setLoopStart :: String -> action
+  , setLoopEnd :: String -> action
+  , moveLoop :: Int -> action
   }
 
 render :: forall action slots m. SongActions action -> App -> HH.ComponentHTML action slots m
@@ -110,12 +119,20 @@ songShell actions app song =
           ]
       ]
   , HH.div [ HP.classes [ HH.ClassName "rt-launch-grid" ] ] (map (trackRow actions app) song.tracks)
-  , HH.div [ HP.classes [ HH.ClassName "rt-score-placeholder" ] ]
-      [ HH.div [ HP.classes [ HH.ClassName "rt-kicker" ] ] [ HH.text "Placeholder" ]
-      , HH.h2_ [ HH.text "Score timeline" ]
-      , HH.p_ [ HH.text "Timeline behavior is reserved for a later slice." ]
-      ]
+  , Score.render (scoreActions actions) app song
   ]
+
+scoreActions :: forall action. SongActions action -> Score.ScoreActions action
+scoreActions actions =
+  { startPaint: actions.startPaint
+  , paintEnter: actions.paintEnter
+  , stopPaint: actions.stopPaint
+  , togglePlay: actions.togglePlay
+  , toggleLoop: actions.toggleLoop
+  , setLoopStart: actions.setLoopStart
+  , setLoopEnd: actions.setLoopEnd
+  , moveLoop: actions.moveLoop
+  }
 
 trackRow :: forall action slots m. SongActions action -> App -> Track -> HH.ComponentHTML action slots m
 trackRow actions app track =

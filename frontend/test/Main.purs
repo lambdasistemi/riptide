@@ -6,6 +6,7 @@ import Data.Array (length)
 import Data.Array as Array
 import Data.Foldable (all)
 import Data.Maybe (Maybe(..))
+import Data.Number as Number
 import Effect (Effect)
 import Effect.Aff (launchAff_)
 import Riptide.Action (ControlKey(..))
@@ -13,10 +14,11 @@ import Riptide.Helpers (cascade, collectIds, definedNames, duplicateIds, effecti
 import Riptide.Model (Cell, Song, Track, totalBars)
 import Riptide.Model as Model
 import Riptide.ImportExport as ImportExport
+import Riptide.View.Playhead as Playhead
 import Riptide.Reducer as Reducer
 import Riptide.Validation (valid)
 import Test.Spec (describe, it)
-import Test.Spec.Assertions (shouldEqual)
+import Test.Spec.Assertions (shouldEqual, shouldSatisfy)
 import Test.Spec.QuickCheck (quickCheck)
 import Test.QuickCheck.Gen as Gen
 import Test.Spec.Reporter.Console (consoleReporter)
@@ -182,6 +184,48 @@ main =
         { start: endMoved.loopStart, end: endMoved.loopEnd, playhead: endMoved.playhead } `shouldEqual`
           { start: 4, end: 5, playhead: 4.999 }
 
+      it "steps the playhead with capped frame time, loop wrapping, and bar-change reporting" do
+        let
+          capped =
+            Playhead.step
+              { playhead: 3.0
+              , dtSeconds: 0.5
+              , loopOn: true
+              , loopStart: 2
+              , loopEnd: 6
+              , lastBar: 3
+              }
+          wrapped =
+            Playhead.step
+              { playhead: 5.95
+              , dtSeconds: 0.25
+              , loopOn: true
+              , loopStart: 2
+              , loopEnd: 6
+              , lastBar: 5
+              }
+          fullRange =
+            Playhead.step
+              { playhead: 15.95
+              , dtSeconds: 0.25
+              , loopOn: false
+              , loopStart: 2
+              , loopEnd: 6
+              , lastBar: 15
+              }
+
+        near capped.playhead 3.15625 `shouldSatisfy` identity
+        capped.bar `shouldEqual` 3
+        capped.changedBar `shouldEqual` Nothing
+
+        near wrapped.playhead 2.10625 `shouldSatisfy` identity
+        wrapped.bar `shouldEqual` 2
+        wrapped.changedBar `shouldEqual` Just 2
+
+        near fullRange.playhead 0.10625 `shouldSatisfy` identity
+        fullRange.bar `shouldEqual` 0
+        fullRange.changedBar `shouldEqual` Just 0
+
     describe "song and toolbox transforms" do
       it "duplicates songs with regenerated ids and remapped active/selected cells" do
         let
@@ -342,6 +386,10 @@ cell id code =
 genScore :: Gen.Gen (Array Boolean)
 genScore =
   Array.take 32 <$> Gen.arrayOf ((_ == 1) <$> Gen.chooseInt 0 1)
+
+near :: Number -> Number -> Boolean
+near actual expected =
+  Number.abs (actual - expected) <= 0.000001
 
 appEmpty :: Model.App
 appEmpty =
