@@ -1,0 +1,63 @@
+cabal-version:   3.0
+name:            riptide
+version:         0.1.0
+synopsis:        Live TidalCycles track mixer
+description:
+  A graphical mixer for live TidalCycles performance: a database of tracks
+  toggled on and off from a score, each edited as plain pattern text.
+
+license:         BSD-3-Clause
+license-file:    LICENSE
+author:          Paolo Veronelli
+maintainer:      paolo.veronelli@gmail.com
+category:        Sound
+build-type:      Simple
+extra-doc-files: README.md
+
+flag werror
+  description: Turn warnings into errors (enabled in CI/nix builds).
+  default:     False
+  manual:      True
+
+common warnings
+  ghc-options:
+    -Wall -Wunused-imports -Wunused-packages -Wmissing-export-lists
+    -Wname-shadowing -Wredundant-constraints
+
+  if flag(werror)
+    ghc-options: -Werror
+
+common language
+  default-language:   GHC2021
+  default-extensions:
+    DerivingStrategies
+    LambdaCase
+    OverloadedStrings
+    RecordWildCards
+
+library
+  import:          warnings, language
+  hs-source-dirs:  src
+  exposed-modules: Riptide
+  build-depends:   base <5
+
+executable riptide
+  import:         warnings, language
+  hs-source-dirs: app
+  main-is:        Main.hs
+  build-depends:
+    , base     <5
+    , riptide
+
+  ghc-options:    -threaded -rtsopts
+
+test-suite unit-tests
+  import:         warnings, language
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is:        Spec.hs
+  build-depends:
+    , base        <5
+    , hspec
+    , QuickCheck
+    , riptide
