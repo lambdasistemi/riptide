@@ -1,11 +1,11 @@
 # Issue 5 Tasks
 
 ## Slice 1 — App Foundation And Seed
-- [ ] T005-S1 Replace `frontend/src/Main.purs` with the Halogen entry.
-- [ ] T005-S1 Add root app/view modules under `frontend/src/Riptide/`.
-- [ ] T005-S1 Seed `Riptide.Model.App` from the prototype §11 data.
-- [ ] T005-S1 Wire shell navigation, engine toggle, Hush, scope chip, active count, and id minting.
-- [ ] T005-S1 Prove with `./gate.sh` and commit `feat(frontend): add riptide app shell`.
+- [x] T005-S1 Replace `frontend/src/Main.purs` with the Halogen entry.
+- [x] T005-S1 Add root app/view modules under `frontend/src/Riptide/`.
+- [x] T005-S1 Seed `Riptide.Model.App` from the prototype §11 data.
+- [x] T005-S1 Wire shell navigation, engine toggle, Hush, scope chip, active count, and id minting.
+- [x] T005-S1 Prove with `./gate.sh` and commit `feat(frontend): add riptide app shell`.
 
 ## Slice 2 — Song Page
 - [ ] T005-S2 Implement song rail list/new/open/rename/duplicate/delete.
