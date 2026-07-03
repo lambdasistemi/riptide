@@ -8,11 +8,11 @@
 - [x] T005-S1 Prove with `./gate.sh` and commit `feat(frontend): add riptide app shell`.
 
 ## Slice 2 — Song Page
-- [ ] T005-S2 Implement song rail list/new/open/rename/duplicate/delete.
-- [ ] T005-S2 Implement launch grid track gutters, controls, stop, add track, add cell, and cell editing/launch/select/delete.
-- [ ] T005-S2 Render visually distinct empty, has-text-idle, selected-armed, active-playing, invalid, and being-edited cell states.
-- [ ] T005-S2 Add the clearly marked Score timeline placeholder without timeline behavior.
-- [ ] T005-S2 Prove with `./gate.sh` and commit `feat(frontend): build song page`.
+- [x] T005-S2 Implement song rail list/new/open/rename/duplicate/delete.
+- [x] T005-S2 Implement launch grid track gutters, controls, stop, add track, add cell, and cell editing/launch/select/delete.
+- [x] T005-S2 Render visually distinct empty, has-text-idle, selected-armed, active-playing, invalid, and being-edited cell states.
+- [x] T005-S2 Add the clearly marked Score timeline placeholder without timeline behavior.
+- [x] T005-S2 Prove with `./gate.sh` and commit `feat(frontend): build song page`.
 
 ## Slice 3 — Definitions Page
 - [ ] T005-S3 Implement toolbox rail list/new/open/rename/duplicate/delete.
