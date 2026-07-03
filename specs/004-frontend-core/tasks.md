@@ -20,5 +20,5 @@
 
 ## Finalization
 
-- [ ] T004-F1 Create/update the draft PR against `main`.
-- [ ] T004-F1 Verify final `./gate.sh`, `nix build .#frontend`, and PR metadata.
+- [X] T004-F1 Create/update the draft PR against `main`.
+- [X] T004-F1 Verify final `./gate.sh`, `nix build .#frontend`, and PR metadata.
