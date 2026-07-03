@@ -1,0 +1,19 @@
+# LLM investigation notes (local only)
+.llm/
+
+# Per-worktree progress checkpoint (local only)
+WIP.md
+
+# Nix / Haskell build artifacts
+result
+result-*
+dist-newstyle/
+
+# PureScript / spago build artifacts
+.spago/
+output/
+node_modules/
+.psci_modules/
+
+# Editor / direnv
+.direnv/
