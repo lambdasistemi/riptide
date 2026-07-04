@@ -10,10 +10,10 @@
 
 ## Slice 2 - frontend backend setting
 
-- [ ] T039-S2 Add persisted backend host/URL state and localStorage FFI.
-- [ ] T039-S2 Build websocket URLs from the setting, preserving same-origin behavior when empty.
-- [ ] T039-S2 Add shell/top-bar settings UI for the backend host/URL field.
-- [ ] T039-S2 Reconnect on setting changes while preserving connection status behavior.
-- [ ] T039-S2 Add frontend tests for URL derivation and storage round-trip.
-- [ ] T039-S2 Update render smoke for the settings affordance and configured websocket connection.
-- [ ] T039-S2 Run focused frontend tests and `./gate.sh`, then commit with the required trailer.
+- [X] T039-S2 Add persisted backend host/URL state and localStorage FFI.
+- [X] T039-S2 Build websocket URLs from the setting, preserving same-origin behavior when empty.
+- [X] T039-S2 Add shell/top-bar settings UI for the backend host/URL field.
+- [X] T039-S2 Reconnect on setting changes while preserving connection status behavior.
+- [X] T039-S2 Add frontend tests for URL derivation and storage round-trip.
+- [X] T039-S2 Update render smoke for the settings affordance and configured websocket connection.
+- [X] T039-S2 Run focused frontend tests and `./gate.sh`, then commit with the required trailer.

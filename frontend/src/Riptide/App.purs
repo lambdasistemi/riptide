@@ -44,6 +44,8 @@ data Action
   | GoSong
   | GoDefs
   | ToggleEngine
+  | ToggleSettings
+  | SetBackendHost String
   | Hush
   | NewSong
   | NewToolbox
@@ -96,7 +98,7 @@ data Action
   | SetLoopEnd String
   | MoveLoop Int
   | PlayheadTick H.SubscriptionId Number
-  | SocketEvent H.SubscriptionId WebSocket.WebSocketEvent
+  | SocketEvent Int H.SubscriptionId WebSocket.WebSocketEvent
 
 component :: forall query input output m. MonadAff m => H.Component query input output m
 component =
@@ -118,6 +120,8 @@ shellActions =
   { goSong: GoSong
   , goDefs: GoDefs
   , toggleEngine: ToggleEngine
+  , toggleSettings: ToggleSettings
+  , setBackendHost: SetBackendHost
   , hush: Hush
   , newSong: NewSong
   , newToolbox: NewToolbox
@@ -187,9 +191,12 @@ definitionsActions =
 handleAction :: forall output m. MonadAff m => Action -> H.HalogenM App Action () output m Unit
 handleAction = case _ of
   Initialize -> do
+    backendHost <- H.liftEffect WebSocket.loadBackendHost
+    H.modify_ (Reducer.setBackendHost backendHost)
     app <- H.get
-    H.modify_ (Reducer.setConnection Connecting)
-    subscribeWebSocket
+    when app.engine do
+      H.modify_ (Reducer.setConnection Connecting)
+      subscribeWebSocket
     when app.playing startPlayhead
   CancelConfirm ->
     H.modify_ Reducer.cancelConfirm
@@ -224,15 +231,36 @@ handleAction = case _ of
         let silenced = Reducer.hush app
         sendPlaybackTransitions app silenced
         traverse_ (H.liftEffect <<< WebSocket.close) app.websocket
-        H.put (silenced { websocket = Nothing, connection = Disconnected })
+        H.put (silenced { websocket = Nothing, websocketGeneration = silenced.websocketGeneration + 1, connection = Disconnected })
       Disconnected -> do
-        H.modify_ (Reducer.setConnection Connecting)
+        H.modify_ \state -> Reducer.setConnection Connecting (state { websocketGeneration = state.websocketGeneration + 1 })
         subscribeWebSocket
       ConnectionError _ -> do
-        H.modify_ (Reducer.setConnection Connecting)
+        H.modify_ \state -> Reducer.setConnection Connecting (state { websocketGeneration = state.websocketGeneration + 1 })
         subscribeWebSocket
       Connecting ->
         pure unit
+  ToggleSettings ->
+    H.modify_ \app -> Reducer.setSettingsOpen (not app.settingsOpen) app
+  SetBackendHost backendHost -> do
+    app <- H.get
+    when (backendHost /= app.backendHost) do
+      H.liftEffect (WebSocket.saveBackendHost backendHost)
+      traverse_ (H.liftEffect <<< WebSocket.close) app.websocket
+      let
+        reconnect =
+          case app.connection of
+            Disconnected -> false
+            _ -> app.engine
+        nextGeneration = app.websocketGeneration + 1
+      H.modify_ \state ->
+        state
+          { backendHost = backendHost
+          , websocket = Nothing
+          , websocketGeneration = nextGeneration
+          , connection = if reconnect then Connecting else state.connection
+          }
+      when reconnect subscribeWebSocket
   Hush -> do
     before <- H.get
     let after = Reducer.hush before
@@ -455,8 +483,8 @@ handleAction = case _ of
       sendPlaybackTransitions app after
     else
       H.unsubscribe subscriptionId
-  SocketEvent subscriptionId event ->
-    handleSocketEvent subscriptionId event
+  SocketEvent generation subscriptionId event ->
+    handleSocketEvent generation subscriptionId event
 
 startPlayhead :: forall output m. MonadAff m => H.HalogenM App Action () output m Unit
 startPlayhead =
@@ -464,9 +492,10 @@ startPlayhead =
     Playhead.animationFrameEmitter (PlayheadTick subscriptionId)
 
 subscribeWebSocket :: forall output m. MonadAff m => H.HalogenM App Action () output m Unit
-subscribeWebSocket =
+subscribeWebSocket = do
+  app <- H.get
   H.subscribe' \subscriptionId ->
-    WebSocket.connectEmitter (SocketEvent subscriptionId)
+    WebSocket.connectEmitter app.backendHost (SocketEvent app.websocketGeneration subscriptionId)
 
 advancePlayhead :: Number -> App -> App
 advancePlayhead dt app =
@@ -574,8 +603,20 @@ showToast message = do
   H.modify_ \app -> app { toast = Just message }
   H.subscribe' \subscriptionId -> Files.timeoutEmitter 2400 (ClearToast subscriptionId message)
 
-handleSocketEvent :: forall output m. MonadAff m => H.SubscriptionId -> WebSocket.WebSocketEvent -> H.HalogenM App Action () output m Unit
-handleSocketEvent subscriptionId = case _ of
+handleSocketEvent :: forall output m. MonadAff m => Int -> H.SubscriptionId -> WebSocket.WebSocketEvent -> H.HalogenM App Action () output m Unit
+handleSocketEvent generation subscriptionId event = do
+  app <- H.get
+  if generation == app.websocketGeneration then
+    handleCurrentSocketEvent subscriptionId event
+  else
+    case event of
+      WebSocket.WebSocketClosed ->
+        H.unsubscribe subscriptionId
+      _ ->
+        pure unit
+
+handleCurrentSocketEvent :: forall output m. MonadAff m => H.SubscriptionId -> WebSocket.WebSocketEvent -> H.HalogenM App Action () output m Unit
+handleCurrentSocketEvent subscriptionId = case _ of
   WebSocket.WebSocketReady socket ->
     H.modify_ (Reducer.setWebSocket (Just socket))
   WebSocket.WebSocketOpened -> do

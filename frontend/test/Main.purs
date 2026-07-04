@@ -9,6 +9,7 @@ import Data.Foldable (all)
 import Data.Maybe (Maybe(..))
 import Data.Number as Number
 import Effect (Effect)
+import Effect.Class (liftEffect)
 import Effect.Aff (launchAff_)
 import Riptide.Action (ControlKey(..))
 import Riptide.App as App
@@ -20,6 +21,7 @@ import Riptide.ImportExport as ImportExport
 import Riptide.View.Playhead as Playhead
 import Riptide.Reducer as Reducer
 import Riptide.Validation (authoritativeValidation, valid)
+import Riptide.WebSocket as WebSocket
 import Test.Spec (describe, it)
 import Test.Spec.Assertions (shouldEqual, shouldSatisfy)
 import Test.Spec.QuickCheck (quickCheck)
@@ -73,6 +75,29 @@ main =
         Model.canUseBackend (Model.ConnectionError "websocket error") `shouldEqual` false
 
     describe "websocket protocol" do
+      it "derives websocket URLs from the backend host setting" do
+        let
+          httpPage = { protocol: "http:", host: "ui.example:8200" }
+          httpsPage = { protocol: "https:", host: "ui.example:8200" }
+
+        WebSocket.websocketUrlFromSetting httpPage "" `shouldEqual` "ws://ui.example:8200/ws"
+        WebSocket.websocketUrlFromSetting httpsPage "" `shouldEqual` "wss://ui.example:8200/ws"
+        WebSocket.websocketUrlFromSetting httpPage "100.111.19.2:8201" `shouldEqual` "ws://100.111.19.2:8201/ws"
+        WebSocket.websocketUrlFromSetting httpsPage "100.111.19.2:8201" `shouldEqual` "wss://100.111.19.2:8201/ws"
+        WebSocket.websocketUrlFromSetting httpPage "ws://100.111.19.2:8201/ws" `shouldEqual` "ws://100.111.19.2:8201/ws"
+        WebSocket.websocketUrlFromSetting httpsPage "wss://100.111.19.2:8201/ws" `shouldEqual` "wss://100.111.19.2:8201/ws"
+        WebSocket.websocketUrlFromSetting httpPage "http://100.111.19.2:8201" `shouldEqual` "ws://100.111.19.2:8201/ws"
+        WebSocket.websocketUrlFromSetting httpsPage "https://100.111.19.2:8201/tidal" `shouldEqual` "wss://100.111.19.2:8201/tidal"
+
+      it "round-trips the backend host setting through storage" do
+        value <- liftEffect do
+          WebSocket.saveBackendHost "127.0.0.1:8201"
+          loaded <- WebSocket.loadBackendHost
+          WebSocket.saveBackendHost ""
+          pure loaded
+
+        value `shouldEqual` "127.0.0.1:8201"
+
       it "encodes client commands with backend tags and field names" do
         Protocol.encodeClientCommand (Protocol.ValidateText "d1 $ sound \"bd\"") `shouldEqual`
           "{\"type\":\"validateText\",\"text\":\"d1 $ sound \\\"bd\\\"\"}"
