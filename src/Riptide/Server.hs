@@ -32,6 +32,8 @@ import Data.Aeson
     ( eitherDecode
     , encode
     )
+import Data.ByteString (ByteString)
+import Data.ByteString.Char8 qualified as ByteString.Char8
 import Data.ByteString.Lazy qualified as LazyByteString
 import Data.Foldable (traverse_)
 import Data.IORef (newIORef)
@@ -43,7 +45,17 @@ import Data.Maybe (fromMaybe)
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Network.Wai (Application)
+import Network.HTTP.Types
+    ( ResponseHeaders
+    , methodOptions
+    , status204
+    )
+import Network.Wai
+    ( Application
+    , Request (..)
+    , mapResponseHeaders
+    , responseLBS
+    )
 import Network.Wai.Application.Static
     ( defaultFileServerSettings
     , staticApp
@@ -93,6 +105,7 @@ data ServerConfig = ServerConfig
     , serverFrontendDir :: FilePath
     , serverStateDirectory :: FilePath
     , serverSlotCapacity :: Int
+    , serverCorsOrigins :: [String]
     }
     deriving stock (Show, Eq)
 
@@ -134,6 +147,7 @@ readServerConfigFrom lookupVar = do
     configuredFrontendDir <- lookupVar "RIPTIDE_FRONTEND_DIR"
     configuredStateDir <- lookupVar "RIPTIDE_STATE_DIR"
     configuredSlotCapacity <- lookupVar "RIPTIDE_SLOT_CAPACITY"
+    configuredCorsOrigins <- lookupVar "RIPTIDE_CORS_ORIGINS"
     pure $ do
         serverPort <- parseServerPort configuredPort
         serverSlotCapacity <- parseSlotCapacity configuredSlotCapacity
@@ -144,6 +158,7 @@ readServerConfigFrom lookupVar = do
                     fromMaybe "frontend/dist" configuredFrontendDir
                 , serverStateDirectory =
                     fromMaybe ".riptide-state" configuredStateDir
+                , serverCorsOrigins = parseCorsOrigins configuredCorsOrigins
                 , ..
                 }
 
@@ -168,14 +183,20 @@ runServerFromEnvironment = do
                     session
             Warp.runSettings
                 (warpSettings config)
-                (serverApplication server $ serverFrontendDir config)
+                ( serverApplication (serverCorsOrigins config) server $
+                    serverFrontendDir config
+                )
 
-serverApplication :: ServerState -> FilePath -> Application
-serverApplication server frontendDir =
+serverApplication
+    :: [String] -> ServerState -> FilePath -> Application
+serverApplication corsOrigins server frontendDir =
     websocketsOr
         WebSockets.defaultConnectionOptions
         (websocketApplication server)
-        (staticApp $ defaultFileServerSettings frontendDir)
+        ( corsMiddleware corsOrigins $
+            staticApp $
+                defaultFileServerSettings frontendDir
+        )
 
 handleClientCommand
     :: ServerState -> ClientCommand -> IO [ServerEvent]
@@ -402,6 +423,55 @@ parseSlotCapacity (Just rawCapacity) =
         Just capacity
             | capacity >= 0 -> Right capacity
         _ -> Left $ InvalidSlotCapacity rawCapacity
+
+parseCorsOrigins :: Maybe String -> [String]
+parseCorsOrigins Nothing =
+    ["*"]
+parseCorsOrigins (Just rawOrigins) =
+    Text.unpack . Text.strip
+        <$> Text.splitOn "," (Text.pack rawOrigins)
+
+corsMiddleware :: [String] -> Application -> Application
+corsMiddleware configuredOrigins app request respond
+    | requestMethod request == methodOptions =
+        respond $ responseLBS status204 headers ""
+    | otherwise =
+        app request $ respond . mapResponseHeaders (headers <>)
+  where
+    headers = corsHeaders configuredOrigins request
+
+corsHeaders :: [String] -> Request -> ResponseHeaders
+corsHeaders configuredOrigins request =
+    originHeaders <> metadataHeaders
+  where
+    originHeaders =
+        case allowedOrigin configuredOrigins request of
+            Just origin ->
+                [("Access-Control-Allow-Origin", origin)]
+                    <> varyOriginHeader configuredOrigins
+            Nothing ->
+                varyOriginHeader configuredOrigins
+
+metadataHeaders :: ResponseHeaders
+metadataHeaders =
+    [ ("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    , ("Access-Control-Allow-Headers", "Content-Type")
+    ]
+
+allowedOrigin :: [String] -> Request -> Maybe ByteString
+allowedOrigin configuredOrigins request
+    | "*" `elem` configuredOrigins = Just "*"
+    | otherwise = do
+        origin <- lookup "Origin" $ requestHeaders request
+        let allowedOrigins = ByteString.Char8.pack <$> configuredOrigins
+        if origin `elem` allowedOrigins
+            then Just origin
+            else Nothing
+
+varyOriginHeader :: [String] -> ResponseHeaders
+varyOriginHeader configuredOrigins
+    | "*" `elem` configuredOrigins = []
+    | otherwise = [("Vary", "Origin")]
 
 forever :: (Applicative f) => f a -> f b
 forever action =

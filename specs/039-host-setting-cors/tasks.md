@@ -2,11 +2,11 @@
 
 ## Slice 1 - backend CORS
 
-- [ ] T039-S1 Add CORS origins to server config with permissive default and env parsing.
-- [ ] T039-S1 Add CORS headers to HTTP responses and implement successful `OPTIONS` preflight.
-- [ ] T039-S1 Preserve websocket upgrades without rejecting cross-origin `Origin`.
-- [ ] T039-S1 Add backend tests for config, preflight, foreign-origin headers, and cross-origin websocket acceptance.
-- [ ] T039-S1 Run focused backend tests and `./gate.sh`, then commit with the required trailer.
+- [X] T039-S1 Add CORS origins to server config with permissive default and env parsing.
+- [X] T039-S1 Add CORS headers to HTTP responses and implement successful `OPTIONS` preflight.
+- [X] T039-S1 Preserve websocket upgrades without rejecting cross-origin `Origin`.
+- [X] T039-S1 Add backend tests for config, preflight, foreign-origin headers, and cross-origin websocket acceptance.
+- [X] T039-S1 Run focused backend tests and `./gate.sh`, then commit with the required trailer.
 
 ## Slice 2 - frontend backend setting
 

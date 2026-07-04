@@ -3,10 +3,31 @@ module Riptide.ServerSpec
     ) where
 
 import Control.Exception (bracket)
+import Data.Aeson (decode)
+import Data.ByteString (ByteString)
+import Data.ByteString.Lazy qualified as LazyByteString
 import Data.IORef (IORef, newIORef, readIORef)
 import Data.List (find)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Network.HTTP.Types
+    ( HeaderName
+    , methodGet
+    , methodOptions
+    , statusCode
+    )
+import Network.Wai
+    ( Request (..)
+    , defaultRequest
+    )
+import Network.Wai.Handler.Warp qualified as Warp
+import Network.Wai.Test
+    ( SRequest (..)
+    , SResponse (..)
+    , runSession
+    , srequest
+    )
+import Network.WebSockets qualified as WebSockets
 import Riptide.Playback
     ( PlaybackEvent (..)
     , dryPlaybackBackend
@@ -25,6 +46,7 @@ import Riptide.Server
     , handleClientCommand
     , newServerState
     , readServerConfigFrom
+    , serverApplication
     )
 import Riptide.Session
     ( DefinitionBlock (..)
@@ -72,10 +94,11 @@ spec = do
                         , serverFrontendDir = "frontend/dist"
                         , serverStateDirectory = ".riptide-state"
                         , serverSlotCapacity = 16
+                        , serverCorsOrigins = ["*"]
                         }
 
         it
-            "reads configured host, port, frontend dir, state dir, and slot capacity"
+            "reads configured host, port, frontend dir, state dir, slot capacity, and CORS origins"
             $ do
                 config <-
                     readServerConfigFrom $
@@ -85,6 +108,10 @@ spec = do
                             , ("RIPTIDE_FRONTEND_DIR", "dist")
                             , ("RIPTIDE_STATE_DIR", "state")
                             , ("RIPTIDE_SLOT_CAPACITY", "32")
+                            ,
+                                ( "RIPTIDE_CORS_ORIGINS"
+                                , "https://ui.example, http://tailnet.test"
+                                )
                             ]
 
                 config
@@ -95,6 +122,10 @@ spec = do
                             , serverFrontendDir = "dist"
                             , serverStateDirectory = "state"
                             , serverSlotCapacity = 32
+                            , serverCorsOrigins =
+                                [ "https://ui.example"
+                                , "http://tailnet.test"
+                                ]
                             }
 
         it "reports an invalid port as a recoverable config error" $ do
@@ -218,6 +249,67 @@ spec = do
                 events `shouldSatisfy` commandFailed (ActivateTrackText trackA textA)
                 readIORef eventsRef >>= (`shouldBe` 0) . length
 
+    describe "Riptide.Server CORS" $ do
+        it "answers OPTIONS preflight with CORS headers" $
+            withServer corsSession $ \server _ frontendDir -> do
+                response <-
+                    runCorsRequest
+                        ["*"]
+                        server
+                        frontendDir
+                        defaultRequest
+                            { requestMethod = methodOptions
+                            , requestHeaders =
+                                [ ("Origin", "https://foreign.example")
+                                ,
+                                    ( "Access-Control-Request-Method"
+                                    , methodGet
+                                    )
+                                ]
+                            }
+
+                statusCode (simpleStatus response) `shouldBe` 204
+                responseHeader "Access-Control-Allow-Origin" response
+                    `shouldBe` Just "*"
+                responseHeader "Access-Control-Allow-Methods" response
+                    `shouldBe` Just "GET, POST, OPTIONS"
+                responseHeader "Access-Control-Allow-Headers" response
+                    `shouldBe` Just "Content-Type"
+                simpleBody response `shouldBe` ""
+
+        it "allows a normal foreign-origin HTTP request by default" $
+            withServer corsSession $ \server _ frontendDir -> do
+                response <-
+                    runCorsRequest
+                        ["*"]
+                        server
+                        frontendDir
+                        defaultRequest
+                            { requestMethod = methodGet
+                            , requestHeaders =
+                                [("Origin", "https://foreign.example")]
+                            }
+
+                responseHeader "Access-Control-Allow-Origin" response
+                    `shouldBe` Just "*"
+
+        it "accepts websocket clients with a foreign Origin" $
+            withServer corsSession $ \server _ frontendDir ->
+                Warp.testWithApplication
+                    (pure $ serverApplication ["*"] server frontendDir)
+                    $ \port -> do
+                        rawMessage <-
+                            WebSockets.runClientWith
+                                "127.0.0.1"
+                                port
+                                "/ws"
+                                WebSockets.defaultConnectionOptions
+                                [("Origin", "https://foreign.example")]
+                                WebSockets.receiveData
+
+                        decode rawMessage
+                            `shouldBe` Just (StateSnapshot corsSession)
+
 withServer
     :: Session
     -> (ServerState -> IORef [PlaybackEvent] -> FilePath -> IO a)
@@ -309,6 +401,10 @@ clientSession =
             ]
         }
 
+corsSession :: Session
+corsSession =
+    emptySession 4
+
 findTrack :: TrackId -> Session -> Maybe Track
 findTrack ident session =
     find ((== ident) . trackId) (sessionTracks session)
@@ -358,3 +454,14 @@ withTempDir =
 envLookup :: [(String, String)] -> String -> IO (Maybe String)
 envLookup vars name =
     pure $ lookup name vars
+
+runCorsRequest
+    :: [String] -> ServerState -> FilePath -> Request -> IO SResponse
+runCorsRequest origins server frontendDir request =
+    runSession
+        (srequest $ SRequest request LazyByteString.empty)
+        (serverApplication origins server frontendDir)
+
+responseHeader :: HeaderName -> SResponse -> Maybe ByteString
+responseHeader name response =
+    lookup name $ simpleHeaders response
