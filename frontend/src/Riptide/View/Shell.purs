@@ -20,6 +20,8 @@ type ShellActions action =
   { goSong :: action
   , goDefs :: action
   , toggleEngine :: action
+  , toggleSettings :: action
+  , setBackendHost :: String -> action
   , hush :: action
   , newSong :: action
   , newToolbox :: action
@@ -53,9 +55,11 @@ render actions app child =
         , HH.div [ HP.classes [ HH.ClassName "rt-spacer" ] ] []
         , chipButton (scopeClasses app) (scopeLabel app) actions.goDefs
         , chipButton (engineClasses app) (connectionLabel app.connection) actions.toggleEngine
+        , Icons.iconButton "Settings" Settings actions.toggleSettings
         , Icons.iconButtonWithClasses "Stop everything" Hush [ HH.ClassName "rt-hush" ] actions.hush
         , HH.div [ HP.classes [ HH.ClassName "rt-active" ] ] [ HH.text (activeLabel app) ]
         ]
+    , if app.settingsOpen then settingsPanel actions app else HH.text ""
     , HH.div [ HP.classes [ HH.ClassName "rt-actions" ] ]
         [ actionCluster "Song"
             [ Icons.iconButton "New song" Add actions.newSong
@@ -96,6 +100,26 @@ actionCluster label buttons =
   HH.div [ HP.classes [ HH.ClassName "rt-action-cluster" ] ]
     [ HH.span [ HP.classes [ HH.ClassName "rt-action-label" ] ] [ HH.text label ]
     , HH.div [ HP.classes [ HH.ClassName "rt-action-group" ] ] buttons
+    ]
+
+settingsPanel :: forall action slots m. ShellActions action -> App -> HH.ComponentHTML action slots m
+settingsPanel actions app =
+  HH.div [ HP.classes [ HH.ClassName "rt-settings-panel" ] ]
+    [ HH.label
+        [ HP.classes [ HH.ClassName "rt-settings-field" ]
+        , HP.attr (HH.AttrName "for") "backend-host"
+        ]
+        [ HH.span_ [ HH.text "Backend host/URL" ]
+        , HH.input
+            [ HP.id "backend-host"
+            , HP.name "backendHost"
+            , HP.type_ HP.InputText
+            , HP.value app.backendHost
+            , HP.placeholder "same origin"
+            , HP.attr (HH.AttrName "autocomplete") "off"
+            , HE.onValueInput actions.setBackendHost
+            ]
+        ]
     ]
 
 scopeClasses :: App -> Array HH.ClassName

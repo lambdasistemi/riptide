@@ -43,6 +43,7 @@ const server = http.createServer((req, res) => {
   });
 });
 const sockets = new Set();
+let websocketConnections = 0;
 server.on("upgrade", (req, socket) => {
   if (req.url !== "/ws") {
     socket.destroy();
@@ -65,6 +66,7 @@ server.on("upgrade", (req, socket) => {
     "",
     "",
   ].join("\r\n"));
+  websocketConnections += 1;
   sockets.add(socket);
   socket.on("close", () => sockets.delete(socket));
   socket.on("error", () => sockets.delete(socket));
@@ -132,6 +134,7 @@ try {
     throw new Error("frontend rendered a blank document body");
   }
   await assertFrontendInteractions(cdp);
+  await assertBackendSettings(cdp, port, () => websocketConnections);
   await cdp.close();
 } finally {
   chromeProcess.kill("SIGTERM");
@@ -460,6 +463,48 @@ async function assertFrontendInteractions(cdp) {
   await waitForCondition(cdp, `(() => {
     return ![...document.querySelectorAll(".rt-cell")].some((cell) => (cell.querySelector("textarea")?.value || "").includes('s "bd*2 sn:3"'));
   })()`, 2000, "second confirm delete click did not remove the cell");
+}
+
+async function assertBackendSettings(cdp, port, getConnectionCount) {
+  await evaluateOrThrow(cdp, `(() => {
+    const button = document.querySelector("button[title='Settings'], button[aria-label='Settings']");
+    if (!button) throw new Error("missing settings control");
+    button.click();
+    const labels = [...document.querySelectorAll("label")];
+    const label = labels.find((node) => /backend host\\/url/i.test(node.textContent || ""));
+    if (!label) throw new Error("missing backend host/url label");
+    const targetId = label.getAttribute("for");
+    const input = targetId ? document.getElementById(targetId) : label.querySelector("input");
+    if (!(input instanceof HTMLInputElement)) throw new Error("missing backend host/url input");
+    const box = input.getBoundingClientRect();
+    const style = getComputedStyle(input);
+    if (box.width === 0 || box.height === 0 || style.display === "none" || style.visibility === "hidden") {
+      throw new Error("backend host/url input is not visible");
+    }
+  })()`);
+
+  const before = getConnectionCount();
+  await evaluateOrThrow(cdp, `(() => {
+    const input = document.querySelector("#backend-host, input[name='backendHost']");
+    if (!(input instanceof HTMLInputElement)) throw new Error("missing backend host/url input for reconnect");
+    input.focus();
+    input.value = "127.0.0.1:${port}";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  })()`);
+
+  await waitUntil(
+    () => getConnectionCount() > before,
+    5000,
+    "backend host/url change did not reconnect websocket"
+  );
+
+  await waitForCondition(
+    cdp,
+    `/engine connected/i.test(document.querySelector(".rt-engine")?.textContent || "")`,
+    5000,
+    "engine did not reconnect after backend host/url change"
+  );
 }
 
 async function evaluateOrThrow(cdp, expression) {

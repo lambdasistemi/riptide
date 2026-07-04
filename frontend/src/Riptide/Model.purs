@@ -84,6 +84,9 @@ type App =
   , engine :: Boolean
   , connection :: ConnectionState
   , websocket :: Maybe WebSocketClient
+  , websocketGeneration :: Int
+  , backendHost :: String
+  , settingsOpen :: Boolean
   , backendValidation :: Array AuthoritativeValidation
   , songs :: Array Song
   , currentSongId :: Maybe SongId
@@ -175,6 +178,9 @@ defaultApp =
   , engine: true
   , connection: Disconnected
   , websocket: Nothing
+  , websocketGeneration: 0
+  , backendHost: ""
+  , settingsOpen: false
   , backendValidation: []
   , songs: []
   , currentSongId: Nothing

@@ -1,11 +1,15 @@
 module Riptide.WebSocket
   ( WebSocketClient
+  , PageLocation
   , WebSocketEvent(..)
   , WebSocketHandlers
+  , loadBackendHost
   , close
   , connect
   , connectEmitter
+  , saveBackendHost
   , sendCommand
+  , websocketUrlFromSetting
   ) where
 
 import Prelude
@@ -31,9 +35,15 @@ type WebSocketHandlers =
   , onMessage :: ServerEvent -> Effect Unit
   }
 
-connect :: WebSocketHandlers -> Effect WebSocketClient
-connect handlers =
+type PageLocation =
+  { protocol :: String
+  , host :: String
+  }
+
+connect :: String -> WebSocketHandlers -> Effect WebSocketClient
+connect backendHost handlers =
   connectImpl
+    (currentWebSocketUrl backendHost)
     { onOpen: handlers.onOpen
     , onClose: handlers.onClose
     , onError: handlers.onError
@@ -48,11 +58,11 @@ sendCommand :: WebSocketClient -> ClientCommand -> Effect Unit
 sendCommand socket =
   sendImpl socket <<< encodeClientCommand
 
-connectEmitter :: forall action. (WebSocketEvent -> action) -> HS.Emitter action
-connectEmitter toAction =
+connectEmitter :: forall action. String -> (WebSocketEvent -> action) -> HS.Emitter action
+connectEmitter backendHost toAction =
   map toAction $ HS.makeEmitter \emit -> do
     socket <-
-      connect
+      connect backendHost
         { onOpen: emit WebSocketOpened
         , onClose: emit WebSocketClosed
         , onError: emit <<< WebSocketErrored
@@ -62,6 +72,7 @@ connectEmitter toAction =
     pure (close socket)
 
 foreign import connectImpl ::
+  String ->
   { onOpen :: Effect Unit
   , onClose :: Effect Unit
   , onError :: String -> Effect Unit
@@ -72,3 +83,11 @@ foreign import connectImpl ::
 foreign import sendImpl :: WebSocketClient -> String -> Effect Unit
 
 foreign import close :: WebSocketClient -> Effect Unit
+
+foreign import websocketUrlFromSetting :: PageLocation -> String -> String
+
+foreign import currentWebSocketUrl :: String -> String
+
+foreign import loadBackendHost :: Effect String
+
+foreign import saveBackendHost :: String -> Effect Unit

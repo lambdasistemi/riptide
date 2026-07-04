@@ -38,6 +38,8 @@ module Riptide.Reducer
   , recordBackendValidation
   , selectCell
   , setConnection
+  , setBackendHost
+  , setSettingsOpen
   , setWebSocket
   , setCtrl
   , setLoopEnd
@@ -94,6 +96,14 @@ toggleEngine app =
 setConnection :: ConnectionState -> App -> App
 setConnection connection app =
   app { connection = connection }
+
+setBackendHost :: String -> App -> App
+setBackendHost backendHost app =
+  app { backendHost = backendHost }
+
+setSettingsOpen :: Boolean -> App -> App
+setSettingsOpen settingsOpen app =
+  app { settingsOpen = settingsOpen }
 
 setWebSocket :: Maybe WebSocketClient -> App -> App
 setWebSocket websocket app =
