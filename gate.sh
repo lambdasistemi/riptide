@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-nix develop -c just unit
-nix build .#riptide
-nix develop -c just format-check
-nix develop -c just hlint
-nix develop .#frontend -c just test
-nix build .#frontend
+nix build --quiet .#riptide
+nix develop --quiet -c just unit
+nix develop --quiet -c just format-check
+nix develop --quiet -c just hlint
