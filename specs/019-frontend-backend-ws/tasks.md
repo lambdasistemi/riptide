@@ -2,17 +2,17 @@
 
 ## Slice 1 - Protocol and websocket client foundation
 
-- [ ] T019-S1 Define exact PureScript client/server protocol types and
+- [X] T019-S1 Define exact PureScript client/server protocol types and
   Argonaut codecs matching `src/Riptide/Protocol.hs` and
   `src/Riptide/Session.hs`.
-- [ ] T019-S1 Add a browser websocket client module/FFI that connects to
+- [X] T019-S1 Add a browser websocket client module/FFI that connects to
   same-origin `/ws`, reports open/close/error/message, sends encoded commands,
   and never throws uncaught errors to Halogen.
-- [ ] T019-S1 Update frontend PureScript dependencies and lockfile
+- [X] T019-S1 Update frontend PureScript dependencies and lockfile
   additively.
-- [ ] T019-S1 Add focused frontend tests for command encoding and event
+- [X] T019-S1 Add focused frontend tests for command encoding and event
   decoding.
-- [ ] T019-S1 Run the focused frontend test/build proof and commit with
+- [X] T019-S1 Run the focused frontend test/build proof and commit with
   `Tasks: T019-S1`.
 
 ## Slice 2 - App connection state and authoritative validation

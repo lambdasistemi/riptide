@@ -2,13 +2,19 @@ package:
   name: riptide-frontend
   dependencies:
     - aff
+    - argonaut-codecs
+    - argonaut-core
     - arrays
     - console
     - effect
+    - either
+    - exceptions
     - foldable-traversable
+    - functions
     - halogen
     - integers
     - maybe
+    - nullable
     - prelude
     - strings
   test:

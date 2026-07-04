@@ -4,6 +4,7 @@ import Prelude
 
 import Data.Array (length)
 import Data.Array as Array
+import Data.Either (Either(..))
 import Data.Foldable (all)
 import Data.Maybe (Maybe(..))
 import Data.Number as Number
@@ -13,6 +14,7 @@ import Riptide.Action (ControlKey(..))
 import Riptide.Helpers (cascade, collectIds, definedNames, duplicateIds, effectiveSelected, normalizeScore)
 import Riptide.Model (Cell, Song, Track, totalBars)
 import Riptide.Model as Model
+import Riptide.Protocol.Client as Protocol
 import Riptide.ImportExport as ImportExport
 import Riptide.View.Playhead as Playhead
 import Riptide.Reducer as Reducer
@@ -40,6 +42,56 @@ main =
           { empty: false, valid: false, error: Just "missing ]" }
         valid "d1 $ sound \"bd\"" `shouldEqual`
           { empty: false, valid: true, error: Nothing }
+
+    describe "websocket protocol" do
+      it "encodes client commands with backend tags and field names" do
+        Protocol.encodeClientCommand (Protocol.ValidateText "d1 $ sound \"bd\"") `shouldEqual`
+          "{\"type\":\"validateText\",\"text\":\"d1 $ sound \\\"bd\\\"\"}"
+        Protocol.encodeClientCommand (Protocol.ActivateTrackText "track-a" "cell-1") `shouldEqual`
+          "{\"type\":\"activateTrackText\",\"trackId\":\"track-a\",\"textId\":\"cell-1\"}"
+        Protocol.encodeClientCommand (Protocol.SilenceTrack "track-a") `shouldEqual`
+          "{\"type\":\"silenceTrack\",\"trackId\":\"track-a\"}"
+        Protocol.encodeClientCommand (Protocol.SaveTrackText "track-a" "cell-1" "d1 $ sound \"cp\"") `shouldEqual`
+          "{\"type\":\"saveTrackText\",\"trackId\":\"track-a\",\"textId\":\"cell-1\",\"text\":\"d1 $ sound \\\"cp\\\"\"}"
+        Protocol.encodeClientCommand (Protocol.SaveDefinition "block-1" "feel" "feel = (# room 0.4)") `shouldEqual`
+          "{\"type\":\"saveDefinition\",\"definitionId\":\"block-1\",\"name\":\"feel\",\"code\":\"feel = (# room 0.4)\"}"
+        Protocol.encodeClientCommand (Protocol.ApplyDefinition "block-1") `shouldEqual`
+          "{\"type\":\"applyDefinition\",\"definitionId\":\"block-1\"}"
+
+      it "decodes server events with session snapshots and validation results" do
+        Protocol.decodeServerEvent
+          "{\"type\":\"stateSnapshot\",\"session\":{\"sessionSlotCapacity\":4,\"sessionTracks\":[{\"trackId\":\"track-a\",\"trackName\":\"drums\",\"trackSlot\":1,\"trackTexts\":[{\"trackTextId\":\"cell-1\",\"trackTextSource\":\"d1 $ sound \\\"bd\\\"\"}],\"trackActiveText\":\"cell-1\",\"trackSelectedText\":null}],\"sessionDefinitions\":[{\"blockId\":\"block-1\",\"blockName\":\"feel\",\"blockCode\":\"feel = (# room 0.4)\",\"blockApplied\":\"\"}]}}" `shouldEqual`
+          Right
+            ( Protocol.StateSnapshot
+                { sessionSlotCapacity: 4
+                , sessionTracks:
+                    [ { trackId: "track-a"
+                      , trackName: "drums"
+                      , trackSlot: 1
+                      , trackTexts:
+                          [ { trackTextId: "cell-1"
+                            , trackTextSource: "d1 $ sound \"bd\""
+                            }
+                          ]
+                      , trackActiveText: Just "cell-1"
+                      , trackSelectedText: Nothing
+                      }
+                    ]
+                , sessionDefinitions:
+                    [ { blockId: "block-1"
+                      , blockName: "feel"
+                      , blockCode: "feel = (# room 0.4)"
+                      , blockApplied: ""
+                      }
+                    ]
+                }
+            )
+        Protocol.decodeServerEvent "{\"type\":\"textValidated\",\"result\":{\"type\":\"validationSucceeded\",\"text\":\"d1 $ sound \\\"bd\\\"\"}}" `shouldEqual`
+          Right (Protocol.TextValidated (Protocol.ValidationSucceeded "d1 $ sound \"bd\""))
+        Protocol.decodeServerEvent "{\"type\":\"textValidated\",\"result\":{\"type\":\"validationFailed\",\"text\":\"d1 $ sound \\\"bd\",\"message\":\"unbalanced quote\"}}" `shouldEqual`
+          Right (Protocol.TextValidated (Protocol.ValidationFailed "d1 $ sound \"bd" "unbalanced quote"))
+        Protocol.decodeServerEvent "{\"type\":\"commandFailed\",\"failure\":{\"command\":{\"type\":\"silenceTrack\",\"trackId\":\"track-a\"},\"message\":\"track not found\"}}" `shouldEqual`
+          Right (Protocol.CommandFailed { command: Protocol.SilenceTrack "track-a", message: "track not found" })
 
     describe "definition names" do
       it "parses optional let bindings only at line starts" do

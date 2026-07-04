@@ -6,13 +6,19 @@
         "core": {
           "dependencies": [
             "aff",
+            "argonaut-codecs",
+            "argonaut-core",
             "arrays",
             "console",
             "effect",
+            "either",
+            "exceptions",
             "foldable-traversable",
+            "functions",
             "halogen",
             "integers",
             "maybe",
+            "nullable",
             "prelude",
             "strings"
           ]
@@ -649,6 +655,47 @@
         "foldable-traversable",
         "lists",
         "prelude"
+      ]
+    },
+    "argonaut-codecs": {
+      "type": "registry",
+      "version": "9.1.0",
+      "integrity": "sha256-K910SBrmYallESsm8pxJYThs7lig6hxX3M4PW33Cgew=",
+      "dependencies": [
+        "argonaut-core",
+        "arrays",
+        "bifunctors",
+        "either",
+        "foldable-traversable",
+        "foreign-object",
+        "identity",
+        "integers",
+        "lists",
+        "maybe",
+        "nonempty",
+        "ordered-collections",
+        "prelude",
+        "record",
+        "strings",
+        "tuples"
+      ]
+    },
+    "argonaut-core": {
+      "type": "registry",
+      "version": "7.0.0",
+      "integrity": "sha256-gYZihtBIKthVuXXoiPphMookSf8M5aHyFYkcIWqlxTM=",
+      "dependencies": [
+        "arrays",
+        "control",
+        "either",
+        "foreign-object",
+        "functions",
+        "gen",
+        "maybe",
+        "nonempty",
+        "prelude",
+        "strings",
+        "tailrec"
       ]
     },
     "arrays": {
