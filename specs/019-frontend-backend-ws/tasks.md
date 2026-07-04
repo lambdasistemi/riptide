@@ -42,8 +42,8 @@
 
 ## Finalization
 
-- [ ] T019-F1 Review the full diff, run `./gate.sh`, push the branch, open a
+- [X] T019-F1 Review the full diff, run `./gate.sh`, push the branch, open a
   draft PR against `main`, and confirm the PR body matches delivered behavior.
-- [ ] T019-F1 Confirm GitHub CI is 4/4 green.
-- [ ] T019-F1 Drop `gate.sh` in the final ready-for-review commit and mark the
+- [X] T019-F1 Confirm GitHub CI is 4/4 green.
+- [X] T019-F1 Drop `gate.sh` in the final ready-for-review commit and mark the
   PR ready.
