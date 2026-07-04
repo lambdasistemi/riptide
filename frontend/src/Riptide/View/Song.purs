@@ -12,7 +12,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Riptide.Action (ControlKey(..))
 import Riptide.Model (App, Cell, CellId, DropTarget, EditingTarget, Song, SongId, Track, TrackId)
-import Riptide.Validation (ValidationResult, valid)
+import Riptide.Validation (ValidationResult, authoritativeValidation)
 import Riptide.View.Score as Score
 import Web.HTML.Event.DragEvent (DragEvent)
 
@@ -205,7 +205,7 @@ ctrlSlider actions track key label value =
 cellTile :: forall action slots m. SongActions action -> App -> Track -> Cell -> HH.ComponentHTML action slots m
 cellTile actions app track cell =
   let
-    result = valid cell.code
+    result = authoritativeValidation app.backendValidation cell.code
     active = track.active == Just cell.id
     selected = track.selected == Just cell.id
     editing = isEditing "cell" cell.id app.editing || app.focusCell == Just cell.id

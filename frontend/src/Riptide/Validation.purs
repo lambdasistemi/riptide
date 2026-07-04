@@ -1,11 +1,15 @@
 module Riptide.Validation
-  ( ValidationResult
+  ( AuthoritativeValidation
+  , ValidationResult
+  , authoritativeValidation
+  , recordAuthoritativeValidation
   , valid
   ) where
 
 import Prelude
 
 import Data.Array (filter, length, uncons)
+import Data.Array as Array
 import Data.Maybe (Maybe(..))
 import Data.String.CodeUnits as CodeUnits
 import Data.String.Common as String
@@ -15,6 +19,27 @@ type ValidationResult =
   , valid :: Boolean
   , error :: Maybe String
   }
+
+type AuthoritativeValidation =
+  { source :: String
+  , valid :: Boolean
+  , error :: Maybe String
+  }
+
+authoritativeValidation :: Array AuthoritativeValidation -> String -> ValidationResult
+authoritativeValidation backend code =
+  case Array.find (_.source >>> (_ == code)) backend of
+    Just result ->
+      { empty: String.trim code == ""
+      , valid: result.valid
+      , error: result.error
+      }
+    Nothing ->
+      valid code
+
+recordAuthoritativeValidation :: AuthoritativeValidation -> Array AuthoritativeValidation -> Array AuthoritativeValidation
+recordAuthoritativeValidation result backend =
+  [ result ] <> Array.filter (_.source >>> (_ /= result.source)) backend
 
 valid :: String -> ValidationResult
 valid code =

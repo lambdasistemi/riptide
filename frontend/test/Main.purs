@@ -18,7 +18,7 @@ import Riptide.Protocol.Client as Protocol
 import Riptide.ImportExport as ImportExport
 import Riptide.View.Playhead as Playhead
 import Riptide.Reducer as Reducer
-import Riptide.Validation (valid)
+import Riptide.Validation (authoritativeValidation, valid)
 import Test.Spec (describe, it)
 import Test.Spec.Assertions (shouldEqual, shouldSatisfy)
 import Test.Spec.QuickCheck (quickCheck)
@@ -42,6 +42,34 @@ main =
           { empty: false, valid: false, error: Just "missing ]" }
         valid "d1 $ sound \"bd\"" `shouldEqual`
           { empty: false, valid: true, error: Nothing }
+
+      it "uses matching backend validation as authoritative and local syntax otherwise" do
+        let
+          backend =
+            [ { source: "d1 $ sound \"bd\"", valid: false, error: Just "backend says no" }
+            , { source: "d1 $ sound \"cp\"", valid: true, error: Nothing }
+            ]
+
+        authoritativeValidation backend "d1 $ sound \"bd\"" `shouldEqual`
+          { empty: false, valid: false, error: Just "backend says no" }
+        authoritativeValidation backend "d1 $ sound \"cp\"" `shouldEqual`
+          { empty: false, valid: true, error: Nothing }
+        authoritativeValidation backend "d1 $ sound \"hh\"" `shouldEqual`
+          { empty: false, valid: true, error: Nothing }
+        authoritativeValidation backend "d1 $ sound \"hh" `shouldEqual`
+          { empty: false, valid: false, error: Just "unbalanced quote" }
+
+    describe "connection state" do
+      it "has renderable labels and backend gating" do
+        Model.connectionLabel Model.Connecting `shouldEqual` "engine connecting"
+        Model.connectionLabel Model.Connected `shouldEqual` "engine connected"
+        Model.connectionLabel Model.Disconnected `shouldEqual` "engine offline"
+        Model.connectionLabel (Model.ConnectionError "websocket error") `shouldEqual` "engine error"
+
+        Model.canUseBackend Model.Connecting `shouldEqual` false
+        Model.canUseBackend Model.Connected `shouldEqual` true
+        Model.canUseBackend Model.Disconnected `shouldEqual` false
+        Model.canUseBackend (Model.ConnectionError "websocket error") `shouldEqual` false
 
     describe "websocket protocol" do
       it "encodes client commands with backend tags and field names" do

@@ -5,6 +5,7 @@ module Riptide.App
 import Prelude
 
 import Data.Array as Array
+import Data.Foldable (traverse_)
 import Data.Int as Int
 import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse)
@@ -12,9 +13,10 @@ import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Riptide.Action (ControlKey)
 import Riptide.ImportExport as ImportExport
-import Riptide.Model (App, BlockId, CellId, DropTarget, Page(..), Song, SongId, Toolbox, ToolboxId, TrackId)
+import Riptide.Model (App, Block, BlockId, CellId, ConnectionState(..), DropTarget, Page(..), Song, SongId, Toolbox, ToolboxId, TrackId, canUseBackend)
+import Riptide.Protocol.Client as Protocol
 import Riptide.Reducer as Reducer
-import Riptide.Validation (valid)
+import Riptide.Validation (authoritativeValidation)
 import Riptide.View.Definitions as Definitions
 import Riptide.View.Files as Files
 import Riptide.View.Id (mintId)
@@ -22,6 +24,7 @@ import Riptide.View.Playhead as Playhead
 import Riptide.View.Seed (seedApp)
 import Riptide.View.Shell as Shell
 import Riptide.View.Song as Song
+import Riptide.WebSocket as WebSocket
 import Web.Event.Event as Event
 import Web.HTML.Event.DragEvent (DragEvent)
 import Web.HTML.Event.DragEvent as DragEvent
@@ -83,6 +86,7 @@ data Action
   | SetLoopEnd String
   | MoveLoop Int
   | PlayheadTick H.SubscriptionId Number
+  | SocketEvent H.SubscriptionId WebSocket.WebSocketEvent
 
 component :: forall query input output m. MonadAff m => H.Component query input output m
 component =
@@ -170,6 +174,9 @@ handleAction :: forall output m. MonadAff m => Action -> H.HalogenM App Action (
 handleAction = case _ of
   Initialize -> do
     app <- H.get
+    H.modify_ (Reducer.setConnection Connecting)
+    H.subscribe' \subscriptionId ->
+      WebSocket.connectEmitter (SocketEvent subscriptionId)
     when app.playing startPlayhead
   GoSong ->
     H.modify_ \app ->
@@ -275,14 +282,30 @@ handleAction = case _ of
   AddBlock -> do
     blockId <- H.liftEffect (mintId "b")
     H.modify_ (Reducer.addBlock blockId)
-  RenameBlock blockId name ->
+  RenameBlock blockId name -> do
     H.modify_ (Reducer.renameBlock blockId name)
-  EditBlockCode blockId code ->
+    app <- H.get
+    case blockById blockId app of
+      Just block -> sendWhenConnected (Protocol.SaveDefinition block.id block.name block.code)
+      Nothing -> pure unit
+  EditBlockCode blockId code -> do
     H.modify_ (Reducer.editBlockCode blockId code)
-  ApplyBlock blockId ->
+    app <- H.get
+    case blockById blockId app of
+      Just block -> do
+        sendWhenConnected (Protocol.SaveDefinition block.id block.name block.code)
+        sendWhenConnected (Protocol.ValidateText block.code)
+      Nothing -> pure unit
+  ApplyBlock blockId -> do
     H.modify_ (Reducer.applyBlock blockId)
-  ApplyAll ->
+    app <- H.get
+    case blockById blockId app of
+      Just block -> sendDefinitionAndApply block
+      Nothing -> pure unit
+  ApplyAll -> do
     H.modify_ Reducer.applyAll
+    app <- H.get
+    traverse_ sendDefinitionAndApply (currentBlocks app)
   DeleteBlock blockId ->
     H.modify_ (Reducer.deleteBlock blockId)
   RenameTrack trackId name ->
@@ -309,8 +332,10 @@ handleAction = case _ of
       H.modify_ (Reducer.toggleCell trackId cellId)
     else
       pure unit
-  EditCode trackId cellId code ->
+  EditCode trackId cellId code -> do
     H.modify_ (Reducer.editCode trackId cellId code)
+    sendWhenConnected (Protocol.SaveTrackText trackId cellId code)
+    sendWhenConnected (Protocol.ValidateText code)
   DeleteCell trackId cellId ->
     H.modify_ (Reducer.removeCell trackId cellId)
   StartEdit kind id ->
@@ -375,6 +400,8 @@ handleAction = case _ of
       H.modify_ (advancePlayhead dt)
     else
       H.unsubscribe subscriptionId
+  SocketEvent subscriptionId event ->
+    handleSocketEvent subscriptionId event
 
 startPlayhead :: forall output m. MonadAff m => H.HalogenM App Action () output m Unit
 startPlayhead =
@@ -407,6 +434,21 @@ toolboxById :: ToolboxId -> App -> Maybe Toolbox
 toolboxById toolboxId app =
   Array.find (_.id >>> (_ == toolboxId)) app.toolboxes
 
+blockById :: BlockId -> App -> Maybe Block
+blockById blockId app =
+  currentToolbox app >>= \toolbox ->
+    Array.find (_.id >>> (_ == blockId)) toolbox.blocks
+
+currentToolbox :: App -> Maybe Toolbox
+currentToolbox app =
+  app.currentToolboxId >>= \toolboxId -> toolboxById toolboxId app
+
+currentBlocks :: App -> Array Block
+currentBlocks app =
+  case currentToolbox app of
+    Just toolbox -> toolbox.blocks
+    Nothing -> []
+
 cellIsLaunchable :: TrackId -> CellId -> App -> Boolean
 cellIsLaunchable trackId cellId app =
   case app.currentSongId >>= \songId -> songById songId app of
@@ -414,7 +456,7 @@ cellIsLaunchable trackId cellId app =
       case Array.find (_.id >>> (_ == trackId)) song.tracks of
         Just track ->
           case Array.find (_.id >>> (_ == cellId)) track.cells of
-            Just cell -> (valid cell.code).valid
+            Just cell -> (authoritativeValidation app.backendValidation cell.code).valid
             Nothing -> false
         Nothing -> false
     Nothing -> false
@@ -456,6 +498,51 @@ showToast :: forall output m. MonadAff m => String -> H.HalogenM App Action () o
 showToast message = do
   H.modify_ \app -> app { toast = Just message }
   H.subscribe' \subscriptionId -> Files.timeoutEmitter 2400 (ClearToast subscriptionId message)
+
+handleSocketEvent :: forall output m. MonadAff m => H.SubscriptionId -> WebSocket.WebSocketEvent -> H.HalogenM App Action () output m Unit
+handleSocketEvent subscriptionId = case _ of
+  WebSocket.WebSocketReady socket ->
+    H.modify_ (Reducer.setWebSocket (Just socket))
+  WebSocket.WebSocketOpened ->
+    H.modify_ (Reducer.setConnection Connected)
+  WebSocket.WebSocketClosed -> do
+    H.unsubscribe subscriptionId
+    H.modify_ (Reducer.setWebSocket Nothing <<< Reducer.setConnection Disconnected)
+  WebSocket.WebSocketErrored message -> do
+    H.modify_ (Reducer.setConnection (ConnectionError message))
+    showToast ("WebSocket: " <> message)
+  WebSocket.WebSocketReceived event ->
+    handleServerEvent event
+
+handleServerEvent :: forall output m. MonadAff m => Protocol.ServerEvent -> H.HalogenM App Action () output m Unit
+handleServerEvent = case _ of
+  Protocol.TextValidated result ->
+    H.modify_ (Reducer.recordBackendValidation (authoritativeFromServer result))
+  Protocol.CommandFailed failure ->
+    showToast ("Command failed: " <> failure.message)
+  Protocol.StateSnapshot _ ->
+    pure unit
+
+authoritativeFromServer :: Protocol.ValidationResult -> { source :: String, valid :: Boolean, error :: Maybe String }
+authoritativeFromServer = case _ of
+  Protocol.ValidationSucceeded source ->
+    { source, valid: true, error: Nothing }
+  Protocol.ValidationFailed source message ->
+    { source, valid: false, error: Just message }
+
+sendWhenConnected :: forall output m. MonadAff m => Protocol.ClientCommand -> H.HalogenM App Action () output m Unit
+sendWhenConnected command = do
+  app <- H.get
+  case app.websocket of
+    Just socket | canUseBackend app.connection ->
+      H.liftEffect (WebSocket.sendCommand socket command)
+    _ ->
+      pure unit
+
+sendDefinitionAndApply :: forall output m. MonadAff m => Block -> H.HalogenM App Action () output m Unit
+sendDefinitionAndApply block = do
+  sendWhenConnected (Protocol.SaveDefinition block.id block.name block.code)
+  sendWhenConnected (Protocol.ApplyDefinition block.id)
 
 fileName :: String -> String -> String
 fileName name kind =

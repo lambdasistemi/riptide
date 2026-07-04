@@ -4,6 +4,7 @@ module Riptide.Model
   , BlockId
   , Cell
   , CellId
+  , ConnectionState(..)
   , DragState
   , DropTarget
   , EditingTarget
@@ -21,12 +22,16 @@ module Riptide.Model
   , defaultSong
   , defaultToolbox
   , defaultTrack
+  , canUseBackend
+  , connectionLabel
   , totalBars
   ) where
 
 import Prelude
 
 import Data.Maybe (Maybe(..))
+import Riptide.Validation (AuthoritativeValidation)
+import Riptide.WebSocket (WebSocketClient)
 
 totalBars :: Int
 totalBars = 16
@@ -47,9 +52,39 @@ instance showPage :: Show Page where
   show SongPage = "song"
   show DefsPage = "defs"
 
+data ConnectionState
+  = Connecting
+  | Connected
+  | Disconnected
+  | ConnectionError String
+
+derive instance eqConnectionState :: Eq ConnectionState
+
+instance showConnectionState :: Show ConnectionState where
+  show = case _ of
+    Connecting -> "connecting"
+    Connected -> "connected"
+    Disconnected -> "disconnected"
+    ConnectionError message -> "error: " <> message
+
+connectionLabel :: ConnectionState -> String
+connectionLabel = case _ of
+  Connecting -> "engine connecting"
+  Connected -> "engine connected"
+  Disconnected -> "engine offline"
+  ConnectionError _ -> "engine error"
+
+canUseBackend :: ConnectionState -> Boolean
+canUseBackend = case _ of
+  Connected -> true
+  _ -> false
+
 type App =
   { page :: Page
   , engine :: Boolean
+  , connection :: ConnectionState
+  , websocket :: Maybe WebSocketClient
+  , backendValidation :: Array AuthoritativeValidation
   , songs :: Array Song
   , currentSongId :: Maybe SongId
   , toolboxes :: Array Toolbox
@@ -137,6 +172,9 @@ defaultApp :: App
 defaultApp =
   { page: SongPage
   , engine: true
+  , connection: Disconnected
+  , websocket: Nothing
+  , backendValidation: []
   , songs: []
   , currentSongId: Nothing
   , toolboxes: []

@@ -10,8 +10,8 @@ import Data.Maybe (Maybe(..), maybe)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Riptide.Model (App, Page(..), Song, Toolbox)
-import Riptide.Validation (valid)
+import Riptide.Model (App, ConnectionState(..), Page(..), Song, Toolbox, connectionLabel)
+import Riptide.Validation (authoritativeValidation)
 
 type ShellActions action =
   { goSong :: action
@@ -42,7 +42,7 @@ render actions app child =
             ]
         , HH.div [ HP.classes [ HH.ClassName "rt-spacer" ] ] []
         , chipButton (scopeClasses app) (scopeLabel app) actions.goDefs
-        , chipButton (engineClasses app) (if app.engine then "engine connected" else "engine not running") actions.toggleEngine
+        , chipButton (engineClasses app) (connectionLabel app.connection) actions.toggleEngine
         , HH.button [ HP.classes [ HH.ClassName "rt-hush" ], HE.onClick \_ -> actions.hush ] [ HH.text "Hush" ]
         , HH.div [ HP.classes [ HH.ClassName "rt-active" ] ] [ HH.text (activeLabel app) ]
         ]
@@ -87,7 +87,7 @@ scopeClasses app =
 
 engineClasses :: App -> Array HH.ClassName
 engineClasses app =
-  [ HH.ClassName "rt-chip", HH.ClassName "rt-engine", if app.engine then HH.ClassName "is-valid" else HH.ClassName "is-invalid" ]
+  [ HH.ClassName "rt-chip", HH.ClassName "rt-engine", connectionClass app.connection ]
 
 scopeLabel :: App -> String
 scopeLabel app =
@@ -95,7 +95,14 @@ scopeLabel app =
 
 scopeInvalid :: App -> Boolean
 scopeInvalid app =
-  maybe false (\toolbox -> Array.any (\block -> block.code /= "" && not (valid block.code).valid) toolbox.blocks) (currentToolbox app)
+  maybe false (\toolbox -> Array.any (\block -> block.code /= "" && not (authoritativeValidation app.backendValidation block.code).valid) toolbox.blocks) (currentToolbox app)
+
+connectionClass :: ConnectionState -> HH.ClassName
+connectionClass = case _ of
+  Connected -> HH.ClassName "is-valid"
+  Connecting -> HH.ClassName "is-pending"
+  Disconnected -> HH.ClassName "is-invalid"
+  ConnectionError _ -> HH.ClassName "is-invalid"
 
 activeLabel :: App -> String
 activeLabel app =

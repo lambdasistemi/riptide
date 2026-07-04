@@ -17,17 +17,17 @@
 
 ## Slice 2 - App connection state and authoritative validation
 
-- [ ] T019-S2 Extend app state/actions to track websocket connection status,
+- [X] T019-S2 Extend app state/actions to track websocket connection status,
   backend validation results, and command failures while keeping disconnected
   fallback behavior.
-- [ ] T019-S2 Wire app initialization to connect/subscribe to `/ws`, process
+- [X] T019-S2 Wire app initialization to connect/subscribe to `/ws`, process
   decoded server events, and reflect connection state in the existing engine UI.
-- [ ] T019-S2 Send save/validate commands for cell edits and definition
+- [X] T019-S2 Send save/validate commands for cell edits and definition
   save/apply operations when connected.
-- [ ] T019-S2 Update song/definition/shell views so backend validation is
+- [X] T019-S2 Update song/definition/shell views so backend validation is
   authoritative when present and local syntactic validation remains the instant
   hint.
-- [ ] T019-S2 Run focused tests/build proof and commit with `Tasks: T019-S2`.
+- [X] T019-S2 Run focused tests/build proof and commit with `Tasks: T019-S2`.
 
 ## Slice 3 - Real activate/silence and score playback commands
 
