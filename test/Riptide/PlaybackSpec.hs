@@ -5,11 +5,16 @@ module Riptide.PlaybackSpec
 import Data.IORef (newIORef, readIORef)
 import Data.Text (Text)
 import Riptide.Playback
-    ( PlaybackError (..)
+    ( PlaybackConfigError (..)
+    , PlaybackError (..)
     , PlaybackEvent (..)
+    , PlaybackMode (..)
+    , SuperDirtTargetConfig (..)
     , activateTrackPlayback
     , dryPlaybackBackend
+    , readPlaybackModeFrom
     , silenceTrackPlayback
+    , superDirtTargetFor
     )
 import Riptide.Session
     ( DefinitionId (..)
@@ -26,6 +31,7 @@ import Riptide.Session
     , emptySession
     , silenceTrack
     )
+import Sound.Tidal.Stream.Types (oAddress, oPort)
 import Test.Hspec
     ( Spec
     , describe
@@ -37,6 +43,81 @@ import Test.Hspec
 spec :: Spec
 spec =
     describe "Riptide.Playback" $ do
+        it "selects dry playback when no SuperDirt env vars are configured" $ do
+            result <- readPlaybackModeFrom $ const $ pure Nothing
+
+            result `shouldBe` Right DryPlayback
+
+        it "parses and preserves remote SuperDirt host and port env values" $ do
+            result <-
+                readPlaybackModeFrom $
+                    pure . \case
+                        "RIPTIDE_SUPERDIRT_HOST" ->
+                            Just "riptide-studio.tailnet.example"
+                        "RIPTIDE_SUPERDIRT_PORT" -> Just "58120"
+                        _ -> Nothing
+
+            result
+                `shouldBe` Right
+                    ( SuperDirtPlayback $
+                        SuperDirtTargetConfig
+                            { superDirtHost = "riptide-studio.tailnet.example"
+                            , superDirtPort = 58120
+                            }
+                    )
+
+        it "uses the default SuperDirt port when only host is configured" $ do
+            result <-
+                readPlaybackModeFrom $
+                    pure . \case
+                        "RIPTIDE_SUPERDIRT_HOST" -> Just "studio.local"
+                        _ -> Nothing
+
+            result
+                `shouldBe` Right
+                    ( SuperDirtPlayback $
+                        SuperDirtTargetConfig
+                            { superDirtHost = "studio.local"
+                            , superDirtPort = 57120
+                            }
+                    )
+
+        it "uses the default SuperDirt host when only port is configured" $ do
+            result <-
+                readPlaybackModeFrom $
+                    pure . \case
+                        "RIPTIDE_SUPERDIRT_PORT" -> Just "58120"
+                        _ -> Nothing
+
+            result
+                `shouldBe` Right
+                    ( SuperDirtPlayback $
+                        SuperDirtTargetConfig
+                            { superDirtHost = "127.0.0.1"
+                            , superDirtPort = 58120
+                            }
+                    )
+
+        it "returns a recoverable config error for an invalid SuperDirt port" $ do
+            result <-
+                readPlaybackModeFrom $
+                    pure . \case
+                        "RIPTIDE_SUPERDIRT_PORT" -> Just "not-a-port"
+                        _ -> Nothing
+
+            result `shouldBe` Left (InvalidSuperDirtPort "not-a-port")
+
+        it "builds a SuperDirt target with the configured address and port" $ do
+            let target =
+                    superDirtTargetFor $
+                        SuperDirtTargetConfig
+                            { superDirtHost = "100.96.12.34"
+                            , superDirtPort = 58120
+                            }
+
+            oAddress target `shouldBe` "100.96.12.34"
+            oPort target `shouldBe` 58120
+
         it "activates active track text by replacing the track slot" $ do
             events <- newIORef []
             let backend = dryPlaybackBackend events

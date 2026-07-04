@@ -1,10 +1,17 @@
 module Riptide.Playback
     ( PlaybackBackend (..)
+    , PlaybackConfigError (..)
     , PlaybackError (..)
     , PlaybackEvent (..)
+    , PlaybackMode (..)
+    , SuperDirtTargetConfig (..)
     , activateTrackPlayback
     , dryPlaybackBackend
+    , readPlaybackMode
+    , readPlaybackModeFrom
+    , realTidalPlaybackBackend
     , silenceTrackPlayback
+    , superDirtTargetFor
     ) where
 
 -- \|
@@ -15,23 +22,50 @@ module Riptide.Playback
 
 import Data.IORef (IORef, modifyIORef')
 import Data.List (find)
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as Text
 import Riptide.Eval (interpretControlPatternWithDefinitions)
 import Riptide.Session
     ( DefinitionBlock (..)
     , Session (..)
-    , Slot
+    , Slot (..)
     , TextId
     , Track (..)
     , TrackId
     , TrackText (..)
     )
+import Sound.Tidal.Config (defaultConfig)
 import Sound.Tidal.Context (ControlPattern)
+import Sound.Tidal.ID (ID (..))
+import Sound.Tidal.Stream
+    ( startTidal
+    , streamReplace
+    , streamSilence
+    )
+import Sound.Tidal.Stream.Target (superdirtTarget)
+import Sound.Tidal.Stream.Types (Target, oAddress, oPort)
+import System.Environment (lookupEnv)
+import Text.Read (readMaybe)
 
 data PlaybackBackend = PlaybackBackend
     { replaceSlot :: Slot -> ControlPattern -> IO ()
     , silenceSlot :: Slot -> IO ()
     }
+
+data SuperDirtTargetConfig = SuperDirtTargetConfig
+    { superDirtHost :: String
+    , superDirtPort :: Int
+    }
+    deriving stock (Show, Eq)
+
+data PlaybackMode
+    = DryPlayback
+    | SuperDirtPlayback SuperDirtTargetConfig
+    deriving stock (Show, Eq)
+
+newtype PlaybackConfigError
+    = InvalidSuperDirtPort String
+    deriving stock (Show, Eq)
 
 data PlaybackError
     = PlaybackTrackMissing TrackId
@@ -82,6 +116,34 @@ dryPlaybackBackend events =
             modifyIORef' events (<> [PlaybackSilence slot])
         }
 
+readPlaybackMode :: IO (Either PlaybackConfigError PlaybackMode)
+readPlaybackMode = readPlaybackModeFrom lookupEnv
+
+readPlaybackModeFrom
+    :: (String -> IO (Maybe String))
+    -> IO (Either PlaybackConfigError PlaybackMode)
+readPlaybackModeFrom lookupVar = do
+    configuredHost <- lookupVar "RIPTIDE_SUPERDIRT_HOST"
+    configuredPort <- lookupVar "RIPTIDE_SUPERDIRT_PORT"
+    pure $ playbackModeFrom configuredHost configuredPort
+
+superDirtTargetFor :: SuperDirtTargetConfig -> Target
+superDirtTargetFor SuperDirtTargetConfig{..} =
+    superdirtTarget
+        { oAddress = superDirtHost
+        , oPort = superDirtPort
+        }
+
+realTidalPlaybackBackend
+    :: SuperDirtTargetConfig -> IO PlaybackBackend
+realTidalPlaybackBackend targetConfig = do
+    stream <- startTidal (superDirtTargetFor targetConfig) defaultConfig
+    pure
+        PlaybackBackend
+            { replaceSlot = streamReplace stream . slotId
+            , silenceSlot = streamSilence stream . slotId
+            }
+
 activateTrackTextPlayback
     :: PlaybackBackend
     -> Session
@@ -118,3 +180,30 @@ appliedDefinitions :: Session -> [String]
 appliedDefinitions session =
     Text.unpack . blockApplied
         <$> filter (not . Text.null . blockApplied) (sessionDefinitions session)
+
+playbackModeFrom
+    :: Maybe String
+    -> Maybe String
+    -> Either PlaybackConfigError PlaybackMode
+playbackModeFrom Nothing Nothing =
+    Right DryPlayback
+playbackModeFrom configuredHost configuredPort = do
+    port <- parseSuperDirtPort configuredPort
+    Right $
+        SuperDirtPlayback $
+            SuperDirtTargetConfig
+                { superDirtHost = fromMaybe "127.0.0.1" configuredHost
+                , superDirtPort = port
+                }
+
+parseSuperDirtPort :: Maybe String -> Either PlaybackConfigError Int
+parseSuperDirtPort Nothing =
+    Right 57120
+parseSuperDirtPort (Just rawPort) =
+    case readMaybe rawPort of
+        Just port -> Right port
+        Nothing -> Left $ InvalidSuperDirtPort rawPort
+
+slotId :: Slot -> ID
+slotId (Slot slotNumber) =
+    ID $ "d" <> show slotNumber

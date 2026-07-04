@@ -84,3 +84,4 @@ test-suite unit-tests
     , QuickCheck
     , riptide
     , text
+    , tidal

@@ -15,14 +15,14 @@
 
 ## Slice B: Real Tidal Backend And Config
 
-- [ ] T017-S2 Add configurable SuperDirt target parsing with
+- [X] T017-S2 Add configurable SuperDirt target parsing with
   `RIPTIDE_SUPERDIRT_HOST` and `RIPTIDE_SUPERDIRT_PORT`.
-- [ ] T017-S2 Add real Tidal backend construction using
+- [X] T017-S2 Add real Tidal backend construction using
   `superdirtTarget{oAddress = host, oPort = port}`, `startTidal`,
   `streamReplace`, and `streamSilence`.
-- [ ] T017-S2 Add tests proving unconfigured mode selects dry playback, invalid
+- [X] T017-S2 Add tests proving unconfigured mode selects dry playback, invalid
   config returns an error, and remote host/port values are preserved.
-- [ ] T017-S2 Run focused tests and `./gate.sh`, then commit one bisect-safe
+- [X] T017-S2 Run focused tests and `./gate.sh`, then commit one bisect-safe
   slice with `Tasks: T017-S2`.
 
 ## Finalization
