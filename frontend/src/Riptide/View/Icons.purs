@@ -133,7 +133,7 @@ svg children =
     [ HP.attr (HH.AttrName "viewBox") "0 0 24 24"
     , HP.attr (HH.AttrName "aria-hidden") "true"
     , HP.attr (HH.AttrName "focusable") "false"
-    , HP.classes [ HH.ClassName "rt-icon" ]
+    , HP.attr (HH.AttrName "class") "rt-icon"
     ]
     children
 
