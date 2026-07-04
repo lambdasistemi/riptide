@@ -41,6 +41,7 @@ library
   exposed-modules:
     Riptide
     Riptide.Eval
+    Riptide.Playback
     Riptide.Session
     Riptide.Store
 
@@ -71,6 +72,7 @@ test-suite unit-tests
   main-is:        Spec.hs
   other-modules:
     Riptide.EvalSpec
+    Riptide.PlaybackSpec
     Riptide.SessionSpec
     Riptide.StoreSpec
 
