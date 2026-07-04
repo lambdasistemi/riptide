@@ -17,23 +17,25 @@ import Riptide.View.Icons (Icon(..))
 import Riptide.View.Icons as Icons
 import Riptide.View.Score as Score
 import Web.HTML.Event.DragEvent (DragEvent)
+import Web.UIEvent.MouseEvent (MouseEvent)
 
 type SongActions action =
   { newSong :: action
   , openSong :: SongId -> action
   , renameSong :: SongId -> String -> action
   , duplicateSong :: SongId -> action
-  , deleteSong :: SongId -> action
+  , deleteSong :: SongId -> MouseEvent -> action
+  , cancelConfirm :: MouseEvent -> action
   , renameTrack :: TrackId -> String -> action
   , setCtrl :: TrackId -> ControlKey -> String -> action
   , stopTrack :: TrackId -> action
   , addTrack :: action
-  , deleteTrack :: TrackId -> action
+  , deleteTrack :: TrackId -> MouseEvent -> action
   , addCell :: TrackId -> action
   , selectCell :: TrackId -> CellId -> action
   , toggleCell :: TrackId -> CellId -> action
   , editCode :: TrackId -> CellId -> String -> action
-  , deleteCell :: TrackId -> CellId -> action
+  , deleteCell :: TrackId -> CellId -> MouseEvent -> action
   , startEdit :: String -> String -> action
   , stopEdit :: action
   , focusCell :: CellId -> action
@@ -101,13 +103,13 @@ songRow actions app song =
           , HH.small_ [ HH.text (show (Array.length song.tracks) <> " tracks") ]
           ]
       , HH.div [ HP.classes [ HH.ClassName "rt-row-actions" ] ]
+          (
           [ Icons.iconButton "Open song" Eye (actions.openSong song.id)
           , Icons.iconButton "Rename song" Edit (actions.startEdit "song" song.id)
           , Icons.iconButton "Duplicate song" Copy (actions.duplicateSong song.id)
-          , Icons.dangerButton (if confirming then "Confirm delete song" else "Delete song")
-              (if confirming then Check else Delete)
-              (actions.deleteSong song.id)
           ]
+            <> confirmDeleteButtons "song" confirming (actions.deleteSong song.id) actions.cancelConfirm
+          )
       ]
 
 songShell :: forall action slots m. SongActions action -> App -> Song -> Array (HH.ComponentHTML action slots m)
@@ -166,11 +168,11 @@ trackRow actions app track =
               , HE.onValueInput (actions.renameTrack track.id)
               ]
           , HH.div [ HP.classes [ HH.ClassName "rt-track-tools" ] ]
+              (
               [ Icons.iconButton "Stop track" Stop (actions.stopTrack track.id)
-              , Icons.dangerButton (if confirming then "Confirm delete track" else "Delete track")
-                  (if confirming then Check else Delete)
-                  (actions.deleteTrack track.id)
               ]
+                <> confirmDeleteButtons "track" confirming (actions.deleteTrack track.id) actions.cancelConfirm
+              )
           , HH.div [ HP.classes [ HH.ClassName "rt-ctrls" ] ]
               [ ctrlSlider actions track Vol "Vol" track.vol
               , ctrlSlider actions track Flt "Flt" track.flt
@@ -242,14 +244,14 @@ cellTile actions app track cell =
           , HE.onValueInput (actions.editCode track.id cell.id)
           ]
       , HH.div [ HP.classes [ HH.ClassName "rt-cell-actions" ] ]
+          (
           [ Icons.iconButtonDisabled (if active then "Stop cell" else "Launch cell")
               (if active then Stop else Play)
               launchDisabled
               (actions.toggleCell track.id cell.id)
-          , Icons.dangerButton (if confirming then "Confirm delete cell" else "Delete cell")
-              (if confirming then Check else Delete)
-              (actions.deleteCell track.id cell.id)
           ]
+            <> confirmDeleteButtons "cell" confirming (actions.deleteCell track.id cell.id) actions.cancelConfirm
+          )
       , case result.error of
           Just err ->
             HH.div [ HP.classes [ HH.ClassName "rt-cell-error" ] ] [ HH.text err ]
@@ -275,6 +277,21 @@ addCellTile actions app trackId =
     , HE.onDrop (actions.dropOn target)
     ]
     [ Icons.icon Add ]
+
+confirmDeleteButtons
+  :: forall action slots m
+   . String
+  -> Boolean
+  -> (MouseEvent -> action)
+  -> (MouseEvent -> action)
+  -> Array (HH.ComponentHTML action slots m)
+confirmDeleteButtons label confirming confirmAction cancelAction =
+  if confirming then
+    [ Icons.dangerButton ("Confirm delete " <> label) Check confirmAction
+    , Icons.cancelButton ("Cancel delete " <> label) cancelAction
+    ]
+  else
+    [ Icons.dangerButton ("Delete " <> label) Delete confirmAction ]
 
 trackClasses :: App -> DropTarget -> Array HH.ClassName
 trackClasses app target =

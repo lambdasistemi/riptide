@@ -213,6 +213,19 @@ main =
         map (_.id) (trackById "t1" deleted).cells `shouldEqual` [ "c1" ]
         map (_.id) (currentTracks deletedTrack) `shouldEqual` [ "t1", "t3" ]
 
+      it "cancels an armed destructive action without deleting the target" do
+        let
+          armed = Reducer.removeCell "t1" "c2" appWithSong
+          cancelled = Reducer.cancelConfirm armed
+          rearmed = Reducer.removeCell "t1" "c2" cancelled
+          deleted = Reducer.removeCell "t1" "c2" rearmed
+
+        armed.confirm `shouldEqual` Just "cell:c2"
+        cancelled.confirm `shouldEqual` Nothing
+        map (_.id) (trackById "t1" cancelled).cells `shouldEqual` [ "c1", "c2" ]
+        rearmed.confirm `shouldEqual` Just "cell:c2"
+        map (_.id) (trackById "t1" deleted).cells `shouldEqual` [ "c1" ]
+
       it "adds tracks and cells with explicit ids and normalized scores" do
         let
           app = Reducer.addCell "t1" "c7" (Reducer.addTrack "t4" appWithSong)

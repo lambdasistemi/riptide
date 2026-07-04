@@ -14,6 +14,7 @@ import Riptide.Model (App, ConnectionState(..), Page(..), Song, Toolbox, connect
 import Riptide.Validation (authoritativeValidation)
 import Riptide.View.Icons (Icon(..))
 import Riptide.View.Icons as Icons
+import Web.UIEvent.KeyboardEvent (KeyboardEvent)
 
 type ShellActions action =
   { goSong :: action
@@ -26,6 +27,8 @@ type ShellActions action =
   , importSong :: action
   , exportToolbox :: action
   , importToolbox :: action
+  , cancelConfirm :: action
+  , keyDown :: KeyboardEvent -> action
   }
 
 render
@@ -35,7 +38,12 @@ render
   -> HH.ComponentHTML action slots m
   -> HH.ComponentHTML action slots m
 render actions app child =
-  HH.main [ HP.classes [ HH.ClassName "rt-shell" ] ]
+  HH.main
+    [ HP.classes [ HH.ClassName "rt-shell" ]
+    , HP.tabIndex 0
+    , HE.onClick \_ -> actions.cancelConfirm
+    , HE.onKeyDown actions.keyDown
+    ]
     [ HH.header [ HP.classes [ HH.ClassName "rt-topbar" ] ]
         [ HH.div [ HP.classes [ HH.ClassName "rt-brand" ] ] [ HH.text "riptide" ]
         , HH.nav [ HP.classes [ HH.ClassName "rt-tabs" ] ]

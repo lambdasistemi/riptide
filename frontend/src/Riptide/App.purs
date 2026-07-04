@@ -28,9 +28,17 @@ import Riptide.WebSocket as WebSocket
 import Web.Event.Event as Event
 import Web.HTML.Event.DragEvent (DragEvent)
 import Web.HTML.Event.DragEvent as DragEvent
+import Web.UIEvent.KeyboardEvent (KeyboardEvent)
+import Web.UIEvent.KeyboardEvent as KeyboardEvent
+import Web.UIEvent.MouseEvent (MouseEvent)
+import Web.UIEvent.MouseEvent as MouseEvent
 
 data Action
   = Initialize
+  | CancelConfirm
+  | CancelConfirmClick MouseEvent
+  | ConfirmTimeout H.SubscriptionId String Int
+  | ShellKeyDown KeyboardEvent
   | GoSong
   | GoDefs
   | ToggleEngine
@@ -50,24 +58,24 @@ data Action
   | RenameToolbox ToolboxId String
   | DuplicateSong SongId
   | DuplicateToolbox ToolboxId
-  | DeleteSong SongId
-  | DeleteToolbox ToolboxId
+  | DeleteSong SongId MouseEvent
+  | DeleteToolbox ToolboxId MouseEvent
   | AddBlock
   | RenameBlock BlockId String
   | EditBlockCode BlockId String
   | ApplyBlock BlockId
   | ApplyAll
-  | DeleteBlock BlockId
+  | DeleteBlock BlockId MouseEvent
   | RenameTrack TrackId String
   | SetCtrl TrackId ControlKey String
   | StopTrack TrackId
   | AddTrack
-  | DeleteTrack TrackId
+  | DeleteTrack TrackId MouseEvent
   | AddCell TrackId
   | SelectCell TrackId CellId
   | ToggleCell TrackId CellId
   | EditCode TrackId CellId String
-  | DeleteCell TrackId CellId
+  | DeleteCell TrackId CellId MouseEvent
   | StartEdit String String
   | StopEdit
   | FocusCell CellId
@@ -115,6 +123,8 @@ shellActions =
   , importSong: ImportSong
   , exportToolbox: ExportToolbox
   , importToolbox: ImportToolbox
+  , cancelConfirm: CancelConfirm
+  , keyDown: ShellKeyDown
   }
 
 songActions :: Song.SongActions Action
@@ -124,6 +134,7 @@ songActions =
   , renameSong: RenameSong
   , duplicateSong: DuplicateSong
   , deleteSong: DeleteSong
+  , cancelConfirm: CancelConfirmClick
   , renameTrack: RenameTrack
   , setCtrl: SetCtrl
   , stopTrack: StopTrack
@@ -160,6 +171,7 @@ definitionsActions =
   , renameToolbox: RenameToolbox
   , duplicateToolbox: DuplicateToolbox
   , deleteToolbox: DeleteToolbox
+  , cancelConfirm: CancelConfirmClick
   , addBlock: AddBlock
   , renameBlock: RenameBlock
   , editBlockCode: EditBlockCode
@@ -177,6 +189,22 @@ handleAction = case _ of
     H.modify_ (Reducer.setConnection Connecting)
     subscribeWebSocket
     when app.playing startPlayhead
+  CancelConfirm ->
+    H.modify_ Reducer.cancelConfirm
+  CancelConfirmClick event -> do
+    stopMouseEvent event
+    H.modify_ Reducer.cancelConfirm
+  ConfirmTimeout subscriptionId key token -> do
+    H.unsubscribe subscriptionId
+    H.modify_ \app ->
+      if app.confirm == Just key && app.confirmToken == token then
+        Reducer.cancelConfirm app
+      else
+        app
+  ShellKeyDown event ->
+    when (KeyboardEvent.key event == "Escape") do
+      H.liftEffect (Event.preventDefault (KeyboardEvent.toEvent event))
+      H.modify_ Reducer.cancelConfirm
   GoSong ->
     H.modify_ \app ->
       case app.currentSongId of
@@ -291,10 +319,10 @@ handleAction = case _ of
         H.modify_ (Reducer.duplicateToolbox toolboxId { toolboxId: newToolboxId, blockIds })
       Nothing ->
         pure unit
-  DeleteSong songId ->
-    H.modify_ (Reducer.deleteSong songId)
-  DeleteToolbox toolboxId ->
-    H.modify_ (Reducer.deleteToolbox toolboxId)
+  DeleteSong songId event ->
+    applyDelete event (Reducer.deleteSong songId)
+  DeleteToolbox toolboxId event ->
+    applyDelete event (Reducer.deleteToolbox toolboxId)
   AddBlock -> do
     blockId <- H.liftEffect (mintId "b")
     H.modify_ (Reducer.addBlock blockId)
@@ -322,8 +350,8 @@ handleAction = case _ of
     H.modify_ Reducer.applyAll
     app <- H.get
     traverse_ sendDefinitionAndApply (currentBlocks app)
-  DeleteBlock blockId ->
-    H.modify_ (Reducer.deleteBlock blockId)
+  DeleteBlock blockId event ->
+    applyDelete event (Reducer.deleteBlock blockId)
   RenameTrack trackId name ->
     H.modify_ (Reducer.renameTrack trackId name)
   SetCtrl trackId key raw ->
@@ -338,8 +366,8 @@ handleAction = case _ of
   AddTrack -> do
     trackId <- H.liftEffect (mintId "t")
     H.modify_ (Reducer.addTrack trackId)
-  DeleteTrack trackId ->
-    H.modify_ (Reducer.removeTrack trackId)
+  DeleteTrack trackId event ->
+    applyDelete event (Reducer.removeTrack trackId)
   AddCell trackId -> do
     cellId <- H.liftEffect (mintId "c")
     H.modify_ (Reducer.addCell trackId cellId)
@@ -357,8 +385,8 @@ handleAction = case _ of
     H.modify_ (Reducer.editCode trackId cellId code)
     sendWhenConnected (Protocol.SaveTrackText trackId cellId code)
     sendWhenConnected (Protocol.ValidateText code)
-  DeleteCell trackId cellId ->
-    H.modify_ (Reducer.removeCell trackId cellId)
+  DeleteCell trackId cellId event ->
+    applyDelete event (Reducer.removeCell trackId cellId)
   StartEdit kind id ->
     H.modify_ (Reducer.startEdit kind id)
   StopEdit ->
@@ -593,6 +621,29 @@ sendDefinitionAndApply :: forall output m. MonadAff m => Block -> H.HalogenM App
 sendDefinitionAndApply block = do
   sendWhenConnected (Protocol.SaveDefinition block.id block.name block.code)
   sendWhenConnected (Protocol.ApplyDefinition block.id)
+
+applyDelete :: forall output m. MonadAff m => MouseEvent -> (App -> App) -> H.HalogenM App Action () output m Unit
+applyDelete event reducer = do
+  stopMouseEvent event
+  before <- H.get
+  let
+    after = reducer before
+  H.put after
+  scheduleConfirmTimeout before after
+
+scheduleConfirmTimeout :: forall output m. MonadAff m => App -> App -> H.HalogenM App Action () output m Unit
+scheduleConfirmTimeout before after =
+  case after.confirm of
+    Just key
+      | before.confirm /= after.confirm || before.confirmToken /= after.confirmToken ->
+          H.subscribe' \subscriptionId ->
+            Files.timeoutEmitter 2800 (ConfirmTimeout subscriptionId key after.confirmToken)
+    _ ->
+      pure unit
+
+stopMouseEvent :: forall output m. MonadAff m => MouseEvent -> H.HalogenM App Action () output m Unit
+stopMouseEvent event =
+  H.liftEffect (Event.stopPropagation (MouseEvent.toEvent event))
 
 fileName :: String -> String -> String
 fileName name kind =

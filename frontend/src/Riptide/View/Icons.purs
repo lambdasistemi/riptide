@@ -4,6 +4,7 @@ module Riptide.View.Icons
   , iconButton
   , iconButtonDisabled
   , iconButtonWithClasses
+  , cancelButton
   , dangerButton
   ) where
 
@@ -14,11 +15,13 @@ import Halogen.HTML as HH
 import Halogen.HTML.Core (Namespace(..))
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Web.UIEvent.MouseEvent (MouseEvent)
 
 data Icon
   = Add
   | ArrowLeft
   | ArrowRight
+  | Cancel
   | Check
   | Copy
   | Delete
@@ -45,19 +48,27 @@ iconButtonWithClasses :: forall action slots m. String -> Icon -> Array HH.Class
 iconButtonWithClasses title glyph classes action =
   button title glyph (Array.cons (HH.ClassName "rt-icon-button") classes) false action
 
-dangerButton :: forall action slots m. String -> Icon -> action -> HH.ComponentHTML action slots m
+cancelButton :: forall action slots m. String -> (MouseEvent -> action) -> HH.ComponentHTML action slots m
+cancelButton title action =
+  buttonWithClick title Cancel [ HH.ClassName "rt-icon-button", HH.ClassName "rt-cancel" ] false action
+
+dangerButton :: forall action slots m. String -> Icon -> (MouseEvent -> action) -> HH.ComponentHTML action slots m
 dangerButton title glyph action =
-  button title glyph [ HH.ClassName "rt-icon-button", HH.ClassName "rt-danger" ] false action
+  buttonWithClick title glyph [ HH.ClassName "rt-icon-button", HH.ClassName "rt-danger" ] false action
 
 button :: forall action slots m. String -> Icon -> Array HH.ClassName -> Boolean -> action -> HH.ComponentHTML action slots m
 button title glyph classes disabled action =
+  buttonWithClick title glyph classes disabled \_ -> action
+
+buttonWithClick :: forall action slots m. String -> Icon -> Array HH.ClassName -> Boolean -> (MouseEvent -> action) -> HH.ComponentHTML action slots m
+buttonWithClick title glyph classes disabled action =
   HH.button
     [ HP.type_ HP.ButtonButton
     , HP.title title
     , HP.attr (HH.AttrName "aria-label") title
     , HP.classes classes
     , HP.disabled disabled
-    , HE.onClick \_ -> action
+    , HE.onClick action
     ]
     [ icon glyph ]
 
@@ -72,6 +83,10 @@ icon glyph =
       [ polyline "15 18 9 12 15 6" ]
     ArrowRight ->
       [ polyline "9 18 15 12 9 6" ]
+    Cancel ->
+      [ line "6" "6" "18" "18"
+      , line "18" "6" "6" "18"
+      ]
     Check ->
       [ polyline "5 13 9 17 19 7" ]
     Copy ->
