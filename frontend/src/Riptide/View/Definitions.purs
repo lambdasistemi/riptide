@@ -12,7 +12,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Riptide.Helpers (cascade)
 import Riptide.Model (App, Block, BlockId, EditingTarget, Toolbox, ToolboxId)
-import Riptide.Validation (ValidationResult, valid)
+import Riptide.Validation (ValidationResult, authoritativeValidation)
 
 type DefinitionsActions action =
   { newToolbox :: action
@@ -76,7 +76,7 @@ toolboxRow actions app toolbox =
                 , HE.onClick \_ -> actions.openToolbox toolbox.id
                 ]
                 [ HH.text toolbox.name ]
-          , HH.small_ [ HH.text (toolboxMeta toolbox) ]
+          , HH.small_ [ HH.text (toolboxMeta app toolbox) ]
           ]
       , HH.div [ HP.classes [ HH.ClassName "rt-row-actions" ] ]
           [ iconButton "Open toolbox" "open" (actions.openToolbox toolbox.id)
@@ -97,7 +97,7 @@ toolboxShell actions app toolbox =
           , HH.p_ [ HH.text "Edit shared pattern helpers, then apply valid changes to the live scope." ]
           ]
       , HH.div [ HP.classes [ HH.ClassName "rt-header-actions" ] ]
-          [ HH.div [ HP.classes [ HH.ClassName "rt-count" ] ] [ HH.text (toolboxMeta toolbox) ]
+          [ HH.div [ HP.classes [ HH.ClassName "rt-count" ] ] [ HH.text (toolboxMeta app toolbox) ]
           , HH.button
               [ HP.type_ HP.ButtonButton
               , HE.onClick \_ -> actions.addBlock
@@ -105,7 +105,7 @@ toolboxShell actions app toolbox =
               [ HH.text "Add block" ]
           , HH.button
               [ HP.type_ HP.ButtonButton
-              , HP.disabled (not (canApplyAny toolbox))
+              , HP.disabled (not (canApplyAny app toolbox))
               , HE.onClick \_ -> actions.applyAll
               ]
               [ HH.text "Apply all" ]
@@ -123,7 +123,7 @@ toolboxShell actions app toolbox =
 blockCard :: forall action slots m. DefinitionsActions action -> App -> Block -> HH.ComponentHTML action slots m
 blockCard actions app block =
   let
-    result = valid block.code
+    result = authoritativeValidation app.backendValidation block.code
     impact = cascade app.songs block
     unsaved = block.code /= block.applied
     canApply = result.valid && unsaved
@@ -200,11 +200,11 @@ currentToolbox app =
 
 toolboxRailMeta :: App -> String
 toolboxRailMeta app =
-  show (Array.length app.toolboxes) <> " defs" <> statusSuffix (Array.any toolboxBroken app.toolboxes) (Array.any toolboxUnsaved app.toolboxes)
+  show (Array.length app.toolboxes) <> " defs" <> statusSuffix (Array.any (toolboxBroken app) app.toolboxes) (Array.any toolboxUnsaved app.toolboxes)
 
-toolboxMeta :: Toolbox -> String
-toolboxMeta toolbox =
-  show (Array.length toolbox.blocks) <> " defs" <> statusSuffix (toolboxBroken toolbox) (toolboxUnsaved toolbox)
+toolboxMeta :: App -> Toolbox -> String
+toolboxMeta app toolbox =
+  show (Array.length toolbox.blocks) <> " defs" <> statusSuffix (toolboxBroken app toolbox) (toolboxUnsaved toolbox)
 
 statusSuffix :: Boolean -> Boolean -> String
 statusSuffix broken unsaved =
@@ -214,17 +214,17 @@ statusSuffix broken unsaved =
     { broken: false, unsaved: true } -> " · unsaved"
     _ -> ""
 
-toolboxBroken :: Toolbox -> Boolean
-toolboxBroken toolbox =
-  Array.any (\block -> not (valid block.code).empty && not (valid block.code).valid) toolbox.blocks
+toolboxBroken :: App -> Toolbox -> Boolean
+toolboxBroken app toolbox =
+  Array.any (\block -> not (authoritativeValidation app.backendValidation block.code).empty && not (authoritativeValidation app.backendValidation block.code).valid) toolbox.blocks
 
 toolboxUnsaved :: Toolbox -> Boolean
 toolboxUnsaved toolbox =
   Array.any (\block -> block.code /= block.applied) toolbox.blocks
 
-canApplyAny :: Toolbox -> Boolean
-canApplyAny toolbox =
-  Array.any (\block -> (valid block.code).valid && block.code /= block.applied) toolbox.blocks
+canApplyAny :: App -> Toolbox -> Boolean
+canApplyAny app toolbox =
+  Array.any (\block -> (authoritativeValidation app.backendValidation block.code).valid && block.code /= block.applied) toolbox.blocks
 
 blockClasses :: ValidationResult -> Boolean -> Array HH.ClassName
 blockClasses result unsaved =

@@ -33,7 +33,10 @@ module Riptide.Reducer
   , renameToolbox
   , renameTrack
   , resizeScoreTo
+  , recordBackendValidation
   , selectCell
+  , setConnection
+  , setWebSocket
   , setCtrl
   , setLoopEnd
   , setLoopStart
@@ -60,8 +63,9 @@ import Data.Int as Int
 import Data.Maybe (Maybe(..), fromMaybe)
 import Riptide.Action (ControlKey(..))
 import Riptide.Helpers (effectiveSelected, normalizeScore)
-import Riptide.Model (App, Block, BlockId, Cell, CellId, Page(..), Song, SongId, Toolbox, ToolboxId, Track, TrackId, defaultBlock, defaultCell, defaultSong, defaultToolbox, defaultTrack, totalBars)
-import Riptide.Validation (valid)
+import Riptide.Model (App, Block, BlockId, Cell, CellId, ConnectionState, Page(..), Song, SongId, Toolbox, ToolboxId, Track, TrackId, defaultBlock, defaultCell, defaultSong, defaultToolbox, defaultTrack, totalBars)
+import Riptide.Validation (AuthoritativeValidation, authoritativeValidation, recordAuthoritativeValidation)
+import Riptide.WebSocket (WebSocketClient)
 
 type DuplicateSongIds =
   { songId :: SongId
@@ -83,6 +87,18 @@ toggleEngine app =
       app { engine = true }
     else
       hush (app { engine = false })
+
+setConnection :: ConnectionState -> App -> App
+setConnection connection app =
+  app { connection = connection }
+
+setWebSocket :: Maybe WebSocketClient -> App -> App
+setWebSocket websocket app =
+  app { websocket = websocket }
+
+recordBackendValidation :: AuthoritativeValidation -> App -> App
+recordBackendValidation result app =
+  app { backendValidation = recordAuthoritativeValidation result app.backendValidation }
 
 hush :: App -> App
 hush =
@@ -115,17 +131,20 @@ setCtrl trackId key value =
       Dly -> track { dly = clampInt 0 100 value }
 
 editCode :: TrackId -> CellId -> String -> App -> App
-editCode trackId cellId code =
-  mapTrack trackId \track ->
-    let
-      cells = map (\cell -> if cell.id == cellId then cell { code = code } else cell) track.cells
-      active =
-        if track.active == Just cellId && not (valid code).valid then
-          Nothing
-        else
-          track.active
-    in
-      track { cells = cells, active = active }
+editCode trackId cellId code app =
+  mapTrack trackId
+    ( \track ->
+        let
+          cells = map (\cell -> if cell.id == cellId then cell { code = code } else cell) track.cells
+          active =
+            if track.active == Just cellId && not (authoritativeValidation app.backendValidation code).valid then
+              Nothing
+            else
+              track.active
+        in
+          track { cells = cells, active = active }
+    )
+    app
 
 selectCell :: TrackId -> CellId -> App -> App
 selectCell trackId cellId =
@@ -340,23 +359,30 @@ renameBlock blockId name =
 
 applyBlock :: BlockId -> App -> App
 applyBlock blockId =
-  mapBlock blockId \block ->
-    if (valid block.code).valid then
-      block { applied = block.code }
-    else
-      block
+  \app ->
+    mapBlock blockId
+      ( \block ->
+          if (authoritativeValidation app.backendValidation block.code).valid then
+            block { applied = block.code }
+          else
+            block
+      )
+      app
 
 applyAll :: App -> App
-applyAll =
-  mapCurrentToolbox \toolbox ->
-    toolbox
-      { blocks =
-          map
-            ( \block ->
-                if (valid block.code).valid then block { applied = block.code } else block
-            )
-            toolbox.blocks
-      }
+applyAll app =
+  mapCurrentToolbox
+    ( \toolbox ->
+        toolbox
+          { blocks =
+              map
+                ( \block ->
+                    if (authoritativeValidation app.backendValidation block.code).valid then block { applied = block.code } else block
+                )
+                toolbox.blocks
+          }
+    )
+    app
 
 deleteBlock :: BlockId -> App -> App
 deleteBlock blockId =
@@ -427,7 +453,7 @@ applyAutomation bar app =
     else if fromMaybe false (Array.index track.score bar) then
       case effectiveSelected track of
         Just cell
-          | app.engine && (valid cell.code).valid -> track { active = Just cell.id }
+          | app.engine && (authoritativeValidation app.backendValidation cell.code).valid -> track { active = Just cell.id }
         _ -> track { active = Nothing }
     else
       track { active = Nothing }
