@@ -27,7 +27,7 @@
 
 ## Finalization
 
-- [ ] T017-F1 Push branch and open/update a draft PR against `main`.
-- [ ] T017-F1 Verify local `./gate.sh` and PR CI are both green.
-- [ ] T017-F1 Remove `gate.sh` in the final ready-for-review commit if the
-  ticket workflow requires dropping the temporary gate sentinel.
+- [X] T017-F1 Push branch and open/update a draft PR against `main`.
+- [X] T017-F1 Verify local `./gate.sh` and PR CI are both green.
+- [X] T017-F1 Retain `gate.sh` for this draft PR because the ticket brief
+  requires the worktree gate to remain available.
