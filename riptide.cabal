@@ -70,6 +70,7 @@ test-suite unit-tests
   hs-source-dirs: test
   main-is:        Spec.hs
   other-modules:
+    Riptide.EvalSpec
     Riptide.SessionSpec
     Riptide.StoreSpec
 

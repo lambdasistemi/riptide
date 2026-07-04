@@ -1,6 +1,8 @@
 module Riptide.Eval
     ( interpretControlPattern
+    , interpretControlPatternWithDefinitions
     , validateControlPattern
+    , validateControlPatternWithDefinitions
     ) where
 
 -- \|
@@ -18,14 +20,14 @@ module Riptide.Eval
 -- database is provided by the Nix wrapper, which points 'interpLibdir' at a
 -- @ghcWithPackages@ GHC through the @RIPTIDE_GHC@ environment variable.
 
-import Data.List (dropWhileEnd)
+import Data.Char (isSpace)
+import Data.List (dropWhileEnd, intercalate, isPrefixOf)
 import Data.Maybe (fromMaybe)
 import Language.Haskell.Interpreter
     ( InterpreterError
     , as
     , interpret
     , setImports
-    , typeChecks
     )
 import Language.Haskell.Interpreter.Unsafe
     ( unsafeRunInterpreterWithArgsLibdir
@@ -71,12 +73,24 @@ success, or the compiler error on failure. Produces no sound.
 interpretControlPattern
     :: String
     -> IO (Either InterpreterError ControlPattern)
-interpretControlPattern code = do
+interpretControlPattern =
+    interpretControlPatternWithDefinitions []
+
+{- |
+Interpret track text as a 'ControlPattern' with active definition bindings in
+scope. Each definition block may start with a leading @let @, matching the saved
+session representation.
+-}
+interpretControlPatternWithDefinitions
+    :: [String]
+    -> String
+    -> IO (Either InterpreterError ControlPattern)
+interpretControlPatternWithDefinitions definitions code = do
     libdir <- interpLibdir
     unsafeRunInterpreterWithArgsLibdir interpArgs libdir $ do
         setImports tidalImports
         interpret
-            ("(" <> code <> ") :: ControlPattern")
+            (controlPatternExpression definitions code)
             (as :: ControlPattern)
 
 {- |
@@ -86,8 +100,41 @@ it. This is the authoritative gate before a track may be activated.
 validateControlPattern
     :: String
     -> IO (Either InterpreterError Bool)
-validateControlPattern code = do
+validateControlPattern =
+    validateControlPatternWithDefinitions []
+
+{- |
+Validate that track text type-checks as a 'ControlPattern' with active
+definition bindings in scope.
+-}
+validateControlPatternWithDefinitions
+    :: [String]
+    -> String
+    -> IO (Either InterpreterError Bool)
+validateControlPatternWithDefinitions definitions code = do
     libdir <- interpLibdir
     unsafeRunInterpreterWithArgsLibdir interpArgs libdir $ do
         setImports tidalImports
-        typeChecks ("(" <> code <> ") :: ControlPattern")
+        _ <-
+            interpret
+                (controlPatternExpression definitions code)
+                (as :: ControlPattern)
+        pure True
+
+controlPatternExpression :: [String] -> String -> String
+controlPatternExpression definitions code =
+    case normalizeDefinition <$> definitions of
+        [] -> scopedCode
+        bindings ->
+            "let { " <> intercalate " ; " bindings <> " } in " <> scopedCode
+  where
+    scopedCode = "(" <> code <> ") :: ControlPattern"
+
+normalizeDefinition :: String -> String
+normalizeDefinition source =
+    case dropWhile isSpace source of
+        trimmed
+            | "let " `isPrefixOf` trimmed ->
+                drop 4 trimmed
+            | otherwise ->
+                trimmed
