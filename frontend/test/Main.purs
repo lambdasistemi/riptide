@@ -11,6 +11,7 @@ import Data.Number as Number
 import Effect (Effect)
 import Effect.Aff (launchAff_)
 import Riptide.Action (ControlKey(..))
+import Riptide.App as App
 import Riptide.Helpers (cascade, collectIds, definedNames, duplicateIds, effectiveSelected, normalizeScore)
 import Riptide.Model (Cell, Song, Track, totalBars)
 import Riptide.Model as Model
@@ -75,6 +76,8 @@ main =
       it "encodes client commands with backend tags and field names" do
         Protocol.encodeClientCommand (Protocol.ValidateText "d1 $ sound \"bd\"") `shouldEqual`
           "{\"type\":\"validateText\",\"text\":\"d1 $ sound \\\"bd\\\"\"}"
+        Protocol.encodeClientCommand (Protocol.SetSession sampleProtocolSession) `shouldEqual`
+          "{\"type\":\"setSession\",\"session\":{\"sessionSlotCapacity\":16,\"sessionTracks\":[{\"trackId\":\"t1\",\"trackName\":\"drums\",\"trackSlot\":1,\"trackTexts\":[{\"trackTextId\":\"c1\",\"trackTextSource\":\"d1 $ sound \\\"bd\\\"\"},{\"trackTextId\":\"c2\",\"trackTextSource\":\"d1 $ sound \\\"cp\\\"\"}],\"trackActiveText\":\"c1\",\"trackSelectedText\":\"c2\"}],\"sessionDefinitions\":[{\"blockId\":\"b1\",\"blockName\":\"feel\",\"blockCode\":\"feel = (# room 0.4)\",\"blockApplied\":\"feel = (# room 0.35)\"}]}}"
         Protocol.encodeClientCommand (Protocol.ActivateTrackText "track-a" "cell-1") `shouldEqual`
           "{\"type\":\"activateTrackText\",\"trackId\":\"track-a\",\"textId\":\"cell-1\"}"
         Protocol.encodeClientCommand (Protocol.SilenceTrack "track-a") `shouldEqual`
@@ -120,6 +123,10 @@ main =
           Right (Protocol.TextValidated (Protocol.ValidationFailed "d1 $ sound \"bd" "unbalanced quote"))
         Protocol.decodeServerEvent "{\"type\":\"commandFailed\",\"failure\":{\"command\":{\"type\":\"silenceTrack\",\"trackId\":\"track-a\"},\"message\":\"track not found\"}}" `shouldEqual`
           Right (Protocol.CommandFailed { command: Protocol.SilenceTrack "track-a", message: "track not found" })
+
+      it "prepares the full current editor state as the first open command" do
+        App.commandsForSocketOpen appWithSongAndToolbox `shouldEqual`
+          [ Protocol.SetSession sampleProtocolSession ]
 
     describe "definition names" do
       it "parses optional let bindings only at line starts" do
@@ -552,6 +559,64 @@ appWithToolbox =
         ]
     , currentToolboxId = Just "tbx1"
     }
+
+appWithSongAndToolbox :: Model.App
+appWithSongAndToolbox =
+  Model.defaultApp
+    { songs =
+        [ { id: "s-open"
+          , name: "open song"
+          , tracks:
+              [ ( track "t1" "drums"
+                    [ cell "c1" "d1 $ sound \"bd\""
+                    , cell "c2" "d1 $ sound \"cp\""
+                    ]
+                )
+                  { active = Just "c1"
+                  , selected = Just "c2"
+                  }
+              ]
+          }
+        ]
+    , currentSongId = Just "s-open"
+    , toolboxes =
+        [ { id: "tb-open"
+          , name: "open defs"
+          , blocks:
+              [ { id: "b1"
+                , name: "feel"
+                , code: "feel = (# room 0.4)"
+                , applied: "feel = (# room 0.35)"
+                }
+              ]
+          }
+        ]
+    , currentToolboxId = Just "tb-open"
+    }
+
+sampleProtocolSession :: Protocol.Session
+sampleProtocolSession =
+  { sessionSlotCapacity: Model.totalBars
+  , sessionTracks:
+      [ { trackId: "t1"
+        , trackName: "drums"
+        , trackSlot: 1
+        , trackTexts:
+            [ { trackTextId: "c1", trackTextSource: "d1 $ sound \"bd\"" }
+            , { trackTextId: "c2", trackTextSource: "d1 $ sound \"cp\"" }
+            ]
+        , trackActiveText: Just "c1"
+        , trackSelectedText: Just "c2"
+        }
+      ]
+  , sessionDefinitions:
+      [ { blockId: "b1"
+        , blockName: "feel"
+        , blockCode: "feel = (# room 0.4)"
+        , blockApplied: "feel = (# room 0.35)"
+        }
+      ]
+  }
 
 sampleSong :: Song
 sampleSong =
