@@ -131,6 +131,7 @@ try {
   if (rendered.bodyTextLength === 0 || rendered.htmlLength === 0) {
     throw new Error("frontend rendered a blank document body");
   }
+  await assertFrontendInteractions(cdp);
   await cdp.close();
 } finally {
   chromeProcess.kill("SIGTERM");
@@ -207,6 +208,100 @@ async function waitForRender(cdp, failures) {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   return last || {};
+}
+
+async function assertFrontendInteractions(cdp) {
+  await evaluateOrThrow(cdp, `(() => {
+    const graphicSelector = "path,line,polyline,rect,circle";
+    const buttons = [...document.querySelectorAll(".rt-icon-button")];
+    if (buttons.length === 0) throw new Error("missing .rt-icon-button elements");
+    const failures = [];
+
+    function isVisibleGraphic(node) {
+      const box = node.getBBox();
+      const style = getComputedStyle(node);
+      const svgStyle = getComputedStyle(node.closest("svg"));
+      const stroke = style.stroke || svgStyle.stroke;
+      const fill = style.fill || svgStyle.fill;
+      const tag = node.tagName.toLowerCase();
+      const hasStroke = stroke !== "none" && stroke !== "rgba(0, 0, 0, 0)";
+      const hasFill = fill !== "none" && fill !== "rgba(0, 0, 0, 0)";
+      const canDraw = tag === "line" || tag === "polyline" ? hasStroke : hasStroke || hasFill;
+      return (box.width > 0 || box.height > 0)
+        && style.display !== "none"
+        && style.visibility !== "hidden"
+        && style.opacity !== "0"
+        && svgStyle.display !== "none"
+        && svgStyle.visibility !== "hidden"
+        && svgStyle.opacity !== "0"
+        && canDraw;
+    }
+
+    for (const button of buttons) {
+      const svg = button.querySelector("svg");
+      const svgBox = svg?.getBoundingClientRect();
+      const visibleGraphic = [...(svg?.querySelectorAll(graphicSelector) || [])].some(isVisibleGraphic);
+      if (!svg || !svgBox || svgBox.width === 0 || svgBox.height === 0 || !visibleGraphic) {
+        failures.push(button.getAttribute("aria-label") || button.title || button.className || "unknown icon button");
+      }
+    }
+    if (failures.length > 0) {
+      throw new Error("icon buttons without visible SVG glyphs: " + failures.join(", "));
+    }
+
+    for (const selector of [".rt-cell-grip", ".rt-cell-select"]) {
+      const button = document.querySelector(selector);
+      const glyph = button?.querySelector(graphicSelector);
+      if (!button || !glyph || !isVisibleGraphic(glyph)) {
+        throw new Error(selector + " does not contain a visible icon glyph");
+      }
+    }
+  })()`);
+
+  await evaluateOrThrow(cdp, `(() => {
+    const cell = document.querySelector(".rt-cell.is-stopped.has-text-idle.is-valid");
+    const button = cell?.querySelector('.rt-cell-actions button[title="Launch cell"]:not(:disabled)');
+    if (!cell || !button) throw new Error("missing enabled launchable stopped cell action");
+    button.click();
+  })()`);
+  await waitForCondition(cdp, `(() => Boolean(document.querySelector(".rt-cell.is-active-playing .rt-cell-actions button[title='Stop cell']:not(:disabled)")))()`, 2000, "launchable cell did not become active with enabled stop action");
+  await evaluateOrThrow(cdp, `(() => {
+    const button = document.querySelector(".rt-cell.is-active-playing .rt-cell-actions button[title='Stop cell']:not(:disabled)");
+    if (!button) throw new Error("missing enabled stop action for active cell");
+    button.click();
+  })()`);
+  await waitForCondition(cdp, `(() => Boolean(document.querySelector(".rt-cell.is-stopped .rt-cell-actions button[title='Launch cell']:not(:disabled)")))()`, 2000, "second launch click did not stop/un-arm the active cell");
+
+  await evaluateOrThrow(cdp, `(() => {
+    const button = document.querySelector(".rt-danger[title^='Delete ']");
+    if (!button) throw new Error("missing delete danger button");
+    const before = button.title;
+    button.click();
+    return before;
+  })()`);
+  await waitForCondition(cdp, `(() => Boolean(document.querySelector(".rt-danger[title^='Confirm delete ']")))()`, 2000, "delete danger button did not arm for confirmation");
+}
+
+async function evaluateOrThrow(cdp, expression) {
+  const response = await cdp.send("Runtime.evaluate", {
+    expression,
+    awaitPromise: true,
+    returnByValue: true,
+  });
+  if (response.exceptionDetails) {
+    const exception = response.exceptionDetails.exception;
+    throw new Error(exception?.description || response.exceptionDetails.text || "browser evaluation failed");
+  }
+  return response.result?.value;
+}
+
+async function waitForCondition(cdp, expression, timeoutMs, message) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    if (await evaluateOrThrow(cdp, expression)) return;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error(message);
 }
 
 async function waitUntil(predicate, timeoutMs, message) {

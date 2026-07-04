@@ -388,9 +388,10 @@
       }
 
       .rt-list-row {
-        display: flex;
-        justify-content: space-between;
-        gap: 8px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
+        gap: 10px;
         padding: 9px;
         margin-bottom: 6px;
         border-color: transparent;
@@ -421,13 +422,18 @@
         background: transparent;
         color: oklch(0.92 0.006 260);
         font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+        overflow: hidden;
+        text-overflow: ellipsis;
         text-align: left;
         font-weight: 700;
+        white-space: nowrap;
       }
 
       .rt-row-actions {
+        flex: 0 0 auto;
         flex-wrap: wrap;
         justify-content: flex-end;
+        width: 76px;
       }
 
       .rt-list-row small {
@@ -618,6 +624,34 @@
       .rt-drag-handle .rt-icon {
         width: 15px;
         height: 15px;
+      }
+
+      .rt-cell-grip,
+      .rt-cell-select {
+        width: 28px;
+        min-width: 28px;
+        min-height: 24px;
+        display: inline-grid;
+        place-items: center;
+        padding: 0;
+        line-height: 1;
+      }
+
+      .rt-cell-select .rt-icon,
+      .rt-cell-grip .rt-icon {
+        width: 15px;
+        height: 15px;
+        display: block;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .rt-cell-select {
+        color: oklch(0.68 0.03 200);
+        background: transparent;
       }
 
       .rt-drag-handle:active {
