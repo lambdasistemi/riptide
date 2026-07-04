@@ -23,12 +23,12 @@
 
 ## Slice 3 — Warp/Websocket Serve Mode
 
-- [ ] T018-S3 Implement websocket client registration, connect snapshot, command
+- [X] T018-S3 Implement websocket client registration, connect snapshot, command
   receive loop, broadcast snapshots, and static frontend serving on one origin.
-- [ ] T018-S3 Add `riptide serve` while preserving `riptide eval`.
-- [ ] T018-S3 Add required cabal dependencies for Warp, WAI static serving, and
+- [X] T018-S3 Add `riptide serve` while preserving `riptide eval`.
+- [X] T018-S3 Add required cabal dependencies for Warp, WAI static serving, and
   websockets.
-- [ ] T018-S3 Run `./gate.sh` and commit the slice.
+- [X] T018-S3 Run `./gate.sh` and commit the slice.
 
 ## Finalization
 
