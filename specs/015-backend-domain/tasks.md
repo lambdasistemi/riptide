@@ -2,14 +2,14 @@
 
 ## Slice 1 - Pure Session Domain
 
-- [ ] T015-S1 Add `Riptide.Session` with pure domain types, hidden slot values,
+- [X] T015-S1 Add `Riptide.Session` with pure domain types, hidden slot values,
   bounded slot pool handling, and reducers for tracks, texts, selection,
   activation, silence, and definition blocks.
-- [ ] T015-S1 Add Hspec/QuickCheck tests with standalone generators proving at
+- [X] T015-S1 Add Hspec/QuickCheck tests with standalone generators proving at
   most one active text per track and live slot uniqueness.
-- [ ] T015-S1 Update `riptide.cabal` only as needed for the new exposed module,
+- [X] T015-S1 Update `riptide.cabal` only as needed for the new exposed module,
   dependencies, and tests.
-- [ ] T015-S1 Run the focused session tests and `./gate.sh`, then commit as
+- [X] T015-S1 Run the focused session tests and `./gate.sh`, then commit as
   `feat(backend): add pure session domain`.
 
 ## Slice 2 - Separate JSON Stores

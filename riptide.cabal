@@ -41,11 +41,13 @@ library
   exposed-modules:
     Riptide
     Riptide.Eval
+    Riptide.Session
 
   build-depends:
     , base     <5
     , hint
     , process
+    , text
     , tidal
 
 executable riptide
@@ -63,8 +65,11 @@ test-suite unit-tests
   type:           exitcode-stdio-1.0
   hs-source-dirs: test
   main-is:        Spec.hs
+  other-modules:
+    Riptide.SessionSpec
   build-depends:
     , base        <5
     , hspec
     , QuickCheck
     , riptide
+    , text
