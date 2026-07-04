@@ -14,13 +14,13 @@
 
 ## Slice 2 - Separate JSON Stores
 
-- [ ] T015-S2 Add `Riptide.Store` as a thin impure shell that persists tracks and
+- [X] T015-S2 Add `Riptide.Store` as a thin impure shell that persists tracks and
   definitions to two separate JSON files under a state directory.
-- [ ] T015-S2 Load definitions before tracks when assembling a session from the
+- [X] T015-S2 Load definitions before tracks when assembling a session from the
   state directory.
-- [ ] T015-S2 Add Hspec/QuickCheck tests with standalone generators proving
+- [X] T015-S2 Add Hspec/QuickCheck tests with standalone generators proving
   `save` followed by `load` returns the same tracks and definitions state.
-- [ ] T015-S2 Update `riptide.cabal` only as needed for the new exposed module
+- [X] T015-S2 Update `riptide.cabal` only as needed for the new exposed module
   and store dependencies.
-- [ ] T015-S2 Run the focused store tests and `./gate.sh`, then commit as
+- [X] T015-S2 Run the focused store tests and `./gate.sh`, then commit as
   `feat(backend): add JSON session stores`.

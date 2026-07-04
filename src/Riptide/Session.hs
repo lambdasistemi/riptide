@@ -35,30 +35,52 @@ track, text, and definition identifiers.
 -}
 
 import Data.List (find)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
+import GHC.Generics (Generic)
 
 -- | Opaque track identifier.
 newtype TrackId = TrackId Text
-    deriving stock (Show, Eq, Ord)
+    deriving stock (Show, Eq, Ord, Generic)
+
+instance FromJSON TrackId
+
+instance ToJSON TrackId
 
 -- | Opaque track text/cell identifier.
 newtype TextId = TextId Text
-    deriving stock (Show, Eq, Ord)
+    deriving stock (Show, Eq, Ord, Generic)
+
+instance FromJSON TextId
+
+instance ToJSON TextId
 
 -- | Opaque definition block identifier.
 newtype DefinitionId = DefinitionId Text
-    deriving stock (Show, Eq, Ord)
+    deriving stock (Show, Eq, Ord, Generic)
+
+instance FromJSON DefinitionId
+
+instance ToJSON DefinitionId
 
 -- | Hidden Tidal slot number, corresponding to @d1@ through @dN@.
 newtype Slot = Slot Int
-    deriving stock (Show, Eq, Ord)
+    deriving stock (Show, Eq, Ord, Generic)
+
+instance FromJSON Slot
+
+instance ToJSON Slot
 
 -- | One editable Tidal source text on a track.
 data TrackText = TrackText
     { trackTextId :: TextId
     , trackTextSource :: Text
     }
-    deriving stock (Show, Eq)
+    deriving stock (Show, Eq, Generic)
+
+instance FromJSON TrackText
+
+instance ToJSON TrackText
 
 -- | A launch-grid track with one hidden slot and cell state.
 data Track = Track
@@ -69,7 +91,11 @@ data Track = Track
     , trackActiveText :: Maybe TextId
     , trackSelectedText :: Maybe TextId
     }
-    deriving stock (Show, Eq)
+    deriving stock (Show, Eq, Generic)
+
+instance FromJSON Track
+
+instance ToJSON Track
 
 -- | Shared definition block with editor and applied code.
 data DefinitionBlock = DefinitionBlock
@@ -78,7 +104,11 @@ data DefinitionBlock = DefinitionBlock
     , blockCode :: Text
     , blockApplied :: Text
     }
-    deriving stock (Show, Eq)
+    deriving stock (Show, Eq, Generic)
+
+instance FromJSON DefinitionBlock
+
+instance ToJSON DefinitionBlock
 
 -- | Pure backend session state.
 data Session = Session
@@ -86,7 +116,11 @@ data Session = Session
     , sessionTracks :: [Track]
     , sessionDefinitions :: [DefinitionBlock]
     }
-    deriving stock (Show, Eq)
+    deriving stock (Show, Eq, Generic)
+
+instance FromJSON Session
+
+instance ToJSON Session
 
 -- | Create an empty session with a bounded hidden slot pool.
 emptySession :: Int -> Session
