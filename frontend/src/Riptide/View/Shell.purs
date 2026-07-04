@@ -57,14 +57,14 @@ render actions app child =
         , HH.div [ HP.classes [ HH.ClassName "rt-active" ] ] [ HH.text (activeLabel app) ]
         ]
     , HH.div [ HP.classes [ HH.ClassName "rt-actions" ] ]
-        [ Icons.iconButton "New song" Add actions.newSong
-        , Icons.iconButton "New toolbox" Add actions.newToolbox
-        , HH.div [ HP.classes [ HH.ClassName "rt-action-group" ] ]
-            [ Icons.iconButton "Export song" Download actions.exportSong
+        [ actionCluster "Song"
+            [ Icons.iconButton "New song" Add actions.newSong
+            , Icons.iconButton "Export song" Download actions.exportSong
             , Icons.iconButton "Import song" Upload actions.importSong
             ]
-        , HH.div [ HP.classes [ HH.ClassName "rt-action-group" ] ]
-            [ Icons.iconButton "Export toolbox" Download actions.exportToolbox
+        , actionCluster "Toolbox"
+            [ Icons.iconButton "New toolbox" Add actions.newToolbox
+            , Icons.iconButton "Export toolbox" Download actions.exportToolbox
             , Icons.iconButton "Import toolbox" Upload actions.importToolbox
             ]
         ]
@@ -89,6 +89,13 @@ chipButton classes label action =
   HH.button [ HP.classes classes, HE.onClick \_ -> action ]
     [ HH.span [ HP.classes [ HH.ClassName "rt-dot" ] ] []
     , HH.span_ [ HH.text label ]
+    ]
+
+actionCluster :: forall action slots m. String -> Array (HH.ComponentHTML action slots m) -> HH.ComponentHTML action slots m
+actionCluster label buttons =
+  HH.div [ HP.classes [ HH.ClassName "rt-action-cluster" ] ]
+    [ HH.span [ HP.classes [ HH.ClassName "rt-action-label" ] ] [ HH.text label ]
+    , HH.div [ HP.classes [ HH.ClassName "rt-action-group" ] ] buttons
     ]
 
 scopeClasses :: App -> Array HH.ClassName

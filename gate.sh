@@ -281,8 +281,26 @@ async function assertFrontendInteractions(cdp) {
     if (tracks.length === 0) failures.push("missing tracks");
 
     for (const track of tracks) {
-      const radios = [...track.querySelectorAll(".rt-cell-head input.rt-cell-select[type='radio']")];
       const cells = [...track.querySelectorAll(".rt-cell")];
+      const compactRows = [...track.querySelectorAll(".rt-cell > .rt-cell-head")];
+      const legacyActionRows = [...track.querySelectorAll(".rt-cell > .rt-cell-actions")];
+      if (compactRows.length !== cells.length) {
+        failures.push("track has " + compactRows.length + " compact cell strips for " + cells.length + " cells");
+      }
+      if (legacyActionRows.length !== 0) {
+        failures.push("legacy .rt-cell-actions row still exists");
+      }
+      for (const cell of cells) {
+        const strip = cell.querySelector(":scope > .rt-cell-head");
+        if (!strip?.querySelector(".rt-cell-grip")) failures.push("compact cell strip is missing drag grip");
+        if (!strip?.querySelector("input.rt-cell-select[type='radio']")) failures.push("compact cell strip is missing native radio");
+        if (!strip?.querySelector(".rt-cell-state")) failures.push("compact cell strip is missing state badge");
+        if (!strip?.querySelector(".rt-cell-spacer")) failures.push("compact cell strip is missing flex spacer");
+        if (!strip?.querySelector("button[title='Launch cell'], button[title='Stop cell']")) failures.push("compact cell strip is missing launch/stop action");
+        if (!strip?.querySelector(".rt-danger[title='Delete cell'], .rt-danger[title='Confirm delete cell']")) failures.push("compact cell strip is missing delete action");
+      }
+
+      const radios = [...track.querySelectorAll(".rt-cell-head input.rt-cell-select[type='radio']")];
       if (radios.length !== cells.length) {
         failures.push("track has " + radios.length + " radio selectors for " + cells.length + " cells");
         continue;
@@ -325,6 +343,43 @@ async function assertFrontendInteractions(cdp) {
       failures.push("old eye select button still exists in cell headers");
     }
 
+    if (document.querySelector(".rt-track-tools")) {
+      failures.push("legacy .rt-track-tools wrapper still exists");
+    }
+    for (const track of tracks) {
+      const row = track.querySelector(".rt-track-gutter > .rt-track-head");
+      if (!row) {
+        failures.push("track gutter is missing compact track head");
+        continue;
+      }
+      if (!row.querySelector(".rt-track-grip")) failures.push("compact track head is missing drag grip");
+      if (!row.querySelector("input")) failures.push("compact track head is missing track name input");
+      if (!row.querySelector("button[title='Stop track']")) failures.push("compact track head is missing stop action");
+      if (!row.querySelector(".rt-danger[title='Delete track'], .rt-danger[title='Confirm delete track']")) failures.push("compact track head is missing delete action");
+      const ctrls = track.querySelector(".rt-track-gutter > .rt-ctrls");
+      if (!ctrls || row.compareDocumentPosition(ctrls) !== Node.DOCUMENT_POSITION_FOLLOWING) {
+        failures.push("track sliders are not below the compact track head");
+      }
+    }
+
+    const songGroup = [...document.querySelectorAll(".rt-action-cluster")]
+      .find((group) => group.querySelector(".rt-action-label")?.textContent.trim() === "Song");
+    const toolboxGroup = [...document.querySelectorAll(".rt-action-cluster")]
+      .find((group) => group.querySelector(".rt-action-label")?.textContent.trim() === "Toolbox");
+    if (!songGroup) failures.push("missing labeled Song global action cluster");
+    if (!toolboxGroup) failures.push("missing labeled Toolbox global action cluster");
+    for (const [label, group, titles] of [
+      ["Song", songGroup, ["New song", "Export song", "Import song"]],
+      ["Toolbox", toolboxGroup, ["New toolbox", "Export toolbox", "Import toolbox"]],
+    ]) {
+      if (!group) continue;
+      for (const title of titles) {
+        if (!group.querySelector("button[title='" + title + "'], button[aria-label='" + title + "']")) {
+          failures.push(label + " global action cluster is missing " + title);
+        }
+      }
+    }
+
     for (const grip of document.querySelectorAll(".rt-drag-handle")) {
       const circles = [...grip.querySelectorAll("svg circle")];
       const lines = [...grip.querySelectorAll("svg line")];
@@ -350,17 +405,17 @@ async function assertFrontendInteractions(cdp) {
 
   await evaluateOrThrow(cdp, `(() => {
     const cell = document.querySelector(".rt-cell.is-stopped.has-text-idle.is-valid");
-    const button = cell?.querySelector('.rt-cell-actions button[title="Launch cell"]:not(:disabled)');
+    const button = cell?.querySelector('.rt-cell-head button[title="Launch cell"]:not(:disabled)');
     if (!cell || !button) throw new Error("missing enabled launchable stopped cell action");
     button.click();
   })()`);
-  await waitForCondition(cdp, `(() => Boolean(document.querySelector(".rt-cell.is-active-playing .rt-cell-actions button[title='Stop cell']:not(:disabled)")))()`, 2000, "launchable cell did not become active with enabled stop action");
+  await waitForCondition(cdp, `(() => Boolean(document.querySelector(".rt-cell.is-active-playing .rt-cell-head button[title='Stop cell']:not(:disabled)")))()`, 2000, "launchable cell did not become active with enabled stop action");
   await evaluateOrThrow(cdp, `(() => {
-    const button = document.querySelector(".rt-cell.is-active-playing .rt-cell-actions button[title='Stop cell']:not(:disabled)");
+    const button = document.querySelector(".rt-cell.is-active-playing .rt-cell-head button[title='Stop cell']:not(:disabled)");
     if (!button) throw new Error("missing enabled stop action for active cell");
     button.click();
   })()`);
-  await waitForCondition(cdp, `(() => Boolean(document.querySelector(".rt-cell.is-stopped .rt-cell-actions button[title='Launch cell']:not(:disabled)")))()`, 2000, "second launch click did not stop/un-arm the active cell");
+  await waitForCondition(cdp, `(() => Boolean(document.querySelector(".rt-cell.is-stopped .rt-cell-head button[title='Launch cell']:not(:disabled)")))()`, 2000, "second launch click did not stop/un-arm the active cell");
 
   await evaluateOrThrow(cdp, `(() => {
     const cell = [...document.querySelectorAll(".rt-cell")]
