@@ -166,6 +166,21 @@ spec = do
                 sourceFor trackA textA session{sessionTracks = loaded}
                     `shouldBe` Just "sound \"sn\""
 
+        it "replaces session tracks and definitions from the client" $
+            withServer sessionWithCapacity $ \server _ stateDir -> do
+                events <- handleClientCommand server $ SetSession clientSession
+
+                session <- currentSession server
+                sessionSlotCapacity session `shouldBe` 8
+                sessionTracks session `shouldBe` sessionTracks clientSession
+                sessionDefinitions session `shouldBe` sessionDefinitions clientSession
+                events `shouldBe` [StateSnapshot session]
+
+                loadedTracks <- loadTracks stateDir
+                loadedDefinitions <- loadDefinitions stateDir
+                loadedTracks `shouldBe` sessionTracks clientSession
+                loadedDefinitions `shouldBe` sessionDefinitions clientSession
+
         it "saves and applies definitions and persists definitions" $
             withServer trackSession $ \server _ stateDir -> do
                 saveEvents <-
@@ -260,6 +275,39 @@ sessionWithAppliedDefinition =
     trackSession
         & addDefinitionBlock defsA "shared" "let kick = sound \"bd\""
         & applyDefinitionBlock defsA
+
+sessionWithCapacity :: Session
+sessionWithCapacity =
+    emptySession 8
+
+clientSession :: Session
+clientSession =
+    Session
+        { sessionSlotCapacity = 2
+        , sessionTracks =
+            [ Track
+                { trackId = trackA
+                , trackName = "client track"
+                , trackSlot = Slot 3
+                , trackTexts =
+                    [ TrackText
+                        { trackTextId = textA
+                        , trackTextSource = "sound \"bd\""
+                        }
+                    ]
+                , trackActiveText = Just textA
+                , trackSelectedText = Just textA
+                }
+            ]
+        , sessionDefinitions =
+            [ DefinitionBlock
+                { blockId = defsA
+                , blockName = "client defs"
+                , blockCode = "let kick = sound \"bd\""
+                , blockApplied = "let kick = sound \"bd\""
+                }
+            ]
+        }
 
 findTrack :: TrackId -> Session -> Maybe Track
 findTrack ident session =
