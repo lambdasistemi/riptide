@@ -261,6 +261,21 @@ main =
         map _.applied (currentBlocks allApplied) `shouldEqual` [ "feel = (# room 0.4)", "" ]
 
     describe "automation and score helpers" do
+      it "derives playback commands only for changed active cells" do
+        Reducer.playbackCommandsForActiveTransitions
+          [ (trackById "t1" appWithSong) { active = Nothing }
+          , trackById "t2" appWithSong
+          , trackById "t3" appWithSong
+          ]
+          [ (trackById "t1" appWithSong) { active = Just "c2" }
+          , trackById "t2" appWithSong
+          , (trackById "t3" appWithSong) { active = Nothing }
+          ]
+          `shouldEqual`
+            [ Protocol.ActivateTrackText "t1" "c2"
+            , Protocol.SilenceTrack "t3"
+            ]
+
       it "drives painted tracks, leaves unpainted tracks alone, and respects engine validity" do
         let
           bar0 = Reducer.applyAutomation 0 appWithSong

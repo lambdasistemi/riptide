@@ -13,7 +13,7 @@ import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Riptide.Action (ControlKey)
 import Riptide.ImportExport as ImportExport
-import Riptide.Model (App, Block, BlockId, CellId, ConnectionState(..), DropTarget, Page(..), Song, SongId, Toolbox, ToolboxId, TrackId, canUseBackend)
+import Riptide.Model (App, Block, BlockId, CellId, ConnectionState(..), DropTarget, Page(..), Song, SongId, Toolbox, ToolboxId, Track, TrackId, canUseBackend)
 import Riptide.Protocol.Client as Protocol
 import Riptide.Reducer as Reducer
 import Riptide.Validation (authoritativeValidation)
@@ -175,8 +175,7 @@ handleAction = case _ of
   Initialize -> do
     app <- H.get
     H.modify_ (Reducer.setConnection Connecting)
-    H.subscribe' \subscriptionId ->
-      WebSocket.connectEmitter (SocketEvent subscriptionId)
+    subscribeWebSocket
     when app.playing startPlayhead
   GoSong ->
     H.modify_ \app ->
@@ -188,10 +187,27 @@ handleAction = case _ of
       case app.currentToolboxId of
         Just toolboxId -> Reducer.openToolbox toolboxId app
         Nothing -> app { page = DefsPage }
-  ToggleEngine ->
-    H.modify_ Reducer.toggleEngine
-  Hush ->
-    H.modify_ Reducer.hush
+  ToggleEngine -> do
+    app <- H.get
+    case app.connection of
+      Connected -> do
+        let silenced = Reducer.hush app
+        sendPlaybackTransitions app silenced
+        traverse_ (H.liftEffect <<< WebSocket.close) app.websocket
+        H.put (silenced { websocket = Nothing, connection = Disconnected })
+      Disconnected -> do
+        H.modify_ (Reducer.setConnection Connecting)
+        subscribeWebSocket
+      ConnectionError _ -> do
+        H.modify_ (Reducer.setConnection Connecting)
+        subscribeWebSocket
+      Connecting ->
+        pure unit
+  Hush -> do
+    before <- H.get
+    let after = Reducer.hush before
+    H.put after
+    sendPlaybackTransitions before after
   NewSong -> do
     songId <- H.liftEffect (mintId "s")
     H.modify_ (Reducer.newSong songId)
@@ -314,8 +330,11 @@ handleAction = case _ of
     case Int.fromString raw of
       Just value -> H.modify_ (Reducer.setCtrl trackId key value)
       Nothing -> pure unit
-  StopTrack trackId ->
-    H.modify_ (Reducer.stopTrack trackId)
+  StopTrack trackId -> do
+    before <- H.get
+    let after = Reducer.stopTrack trackId before
+    H.put after
+    sendPlaybackTransitions before after
   AddTrack -> do
     trackId <- H.liftEffect (mintId "t")
     H.modify_ (Reducer.addTrack trackId)
@@ -327,9 +346,11 @@ handleAction = case _ of
   SelectCell trackId cellId ->
     H.modify_ (Reducer.selectCell trackId cellId)
   ToggleCell trackId cellId -> do
-    app <- H.get
-    if app.engine && cellIsLaunchable trackId cellId app then
-      H.modify_ (Reducer.toggleCell trackId cellId)
+    before <- H.get
+    if before.engine && cellIsLaunchable trackId cellId before then do
+      let after = Reducer.toggleCell trackId cellId before
+      H.put after
+      sendPlaybackTransitions before after
     else
       pure unit
   EditCode trackId cellId code -> do
@@ -379,9 +400,11 @@ handleAction = case _ of
   EndDrag ->
     H.modify_ clearDrag
   TogglePlay -> do
-    H.modify_ Reducer.togglePlay
-    app <- H.get
-    when app.playing startPlayhead
+    before <- H.get
+    let after = Reducer.togglePlay before
+    H.put after
+    sendPlaybackTransitions before after
+    when after.playing startPlayhead
   ToggleLoop ->
     H.modify_ Reducer.toggleLoop
   SetLoopStart raw ->
@@ -396,8 +419,10 @@ handleAction = case _ of
     H.modify_ (Reducer.moveLoop delta)
   PlayheadTick subscriptionId dt -> do
     app <- H.get
-    if app.playing then
-      H.modify_ (advancePlayhead dt)
+    if app.playing then do
+      let after = advancePlayhead dt app
+      H.put after
+      sendPlaybackTransitions app after
     else
       H.unsubscribe subscriptionId
   SocketEvent subscriptionId event ->
@@ -407,6 +432,11 @@ startPlayhead :: forall output m. MonadAff m => H.HalogenM App Action () output 
 startPlayhead =
   H.subscribe' \subscriptionId ->
     Playhead.animationFrameEmitter (PlayheadTick subscriptionId)
+
+subscribeWebSocket :: forall output m. MonadAff m => H.HalogenM App Action () output m Unit
+subscribeWebSocket =
+  H.subscribe' \subscriptionId ->
+    WebSocket.connectEmitter (SocketEvent subscriptionId)
 
 advancePlayhead :: Number -> App -> App
 advancePlayhead dt app =
@@ -447,6 +477,12 @@ currentBlocks :: App -> Array Block
 currentBlocks app =
   case currentToolbox app of
     Just toolbox -> toolbox.blocks
+    Nothing -> []
+
+currentTracks :: App -> Array Track
+currentTracks app =
+  case app.currentSongId >>= \songId -> songById songId app of
+    Just song -> song.tracks
     Nothing -> []
 
 cellIsLaunchable :: TrackId -> CellId -> App -> Boolean
@@ -538,6 +574,11 @@ sendWhenConnected command = do
       H.liftEffect (WebSocket.sendCommand socket command)
     _ ->
       pure unit
+
+sendPlaybackTransitions :: forall output m. MonadAff m => App -> App -> H.HalogenM App Action () output m Unit
+sendPlaybackTransitions before after =
+  traverse_ sendWhenConnected
+    (Reducer.playbackCommandsForActiveTransitions (currentTracks before) (currentTracks after))
 
 sendDefinitionAndApply :: forall output m. MonadAff m => Block -> H.HalogenM App Action () output m Unit
 sendDefinitionAndApply block = do

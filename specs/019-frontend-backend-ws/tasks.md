@@ -31,13 +31,13 @@
 
 ## Slice 3 - Real activate/silence and score playback commands
 
-- [ ] T019-S3 Send `activateTrackText`/`silenceTrack` commands for manual cell
+- [X] T019-S3 Send `activateTrackText`/`silenceTrack` commands for manual cell
   launch, stop, and hush when connected.
-- [ ] T019-S3 Preserve client-side score timing while sending backend
+- [X] T019-S3 Preserve client-side score timing while sending backend
   activate/silence commands when the playhead enters or leaves painted regions.
-- [ ] T019-S3 Surface backend `commandFailed` events without crashing and keep
+- [X] T019-S3 Surface backend `commandFailed` events without crashing and keep
   disconnected/static fallback behavior usable.
-- [ ] T019-S3 Run `./gate.sh`, document the offline/static and live
+- [X] T019-S3 Run `./gate.sh`, document the offline/static and live
   `riptide serve` smoke evidence, and commit with `Tasks: T019-S3`.
 
 ## Finalization
