@@ -8,8 +8,6 @@ module Riptide.View.Icons
   , dangerButton
   ) where
 
-import Prelude
-
 import Data.Array as Array
 import Halogen.HTML as HH
 import Halogen.HTML.Core (Namespace(..))
@@ -114,8 +112,12 @@ icon glyph =
       , circle "12" "12" "3"
       ]
     Grip ->
-      [ line "9" "5" "9" "19"
-      , line "15" "5" "15" "19"
+      [ circle "9" "6" "1.2"
+      , circle "15" "6" "1.2"
+      , circle "9" "12" "1.2"
+      , circle "15" "12" "1.2"
+      , circle "9" "18" "1.2"
+      , circle "15" "18" "1.2"
       ]
     Hush ->
       [ path "M4 10v4h4l5 4V6l-5 4H4Z"
