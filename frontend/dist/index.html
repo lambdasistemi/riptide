@@ -91,8 +91,9 @@
       }
 
       textarea {
-        min-height: 78px;
-        padding: 9px;
+        min-height: 64px;
+        height: 100%;
+        padding: 7px;
         resize: vertical;
         font-family: "JetBrains Mono", ui-monospace, monospace;
         font-size: 12px;
@@ -298,8 +299,9 @@
 
       .rt-actions {
         justify-content: flex-end;
-        min-height: 42px;
-        padding-block: 6px;
+        gap: 12px;
+        min-height: 40px;
+        padding-block: 5px;
         flex-wrap: wrap;
         border-color: oklch(0.22 0.01 260);
         background: oklch(0.163 0.009 260);
@@ -315,7 +317,29 @@
       .rt-action-group {
         display: inline-flex;
         align-items: center;
+        gap: 4px;
+      }
+
+      .rt-action-cluster {
+        display: inline-flex;
+        align-items: center;
         gap: 6px;
+        padding-left: 12px;
+        border-left: 1px solid oklch(0.28 0.01 260);
+      }
+
+      .rt-action-cluster:first-child {
+        padding-left: 0;
+        border-left: 0;
+      }
+
+      .rt-action-label {
+        color: oklch(0.58 0.01 260);
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
       }
 
       .rt-toast {
@@ -364,17 +388,14 @@
       .rt-rail-head,
       .rt-header-actions,
       .rt-row-actions,
-      .rt-track-tools,
-      .rt-cell-head,
-      .rt-cell-actions {
+      .rt-track-head,
+      .rt-cell-head {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 5px;
       }
 
-      .rt-rail-head,
-      .rt-cell-head,
-      .rt-cell-actions {
+      .rt-rail-head {
         justify-content: space-between;
       }
 
@@ -496,20 +517,20 @@
       .rt-block-grid,
       .rt-launch-grid {
         display: grid;
-        gap: 12px;
+        gap: 8px;
       }
 
       .rt-track,
       .rt-block,
       .rt-score,
       .rt-empty {
-        padding: 12px;
+        padding: 10px;
       }
 
       .rt-track {
         display: grid;
         grid-template-columns: minmax(190px, 220px) 1fr;
-        gap: 8px;
+        gap: 7px;
         border-color: oklch(0.24 0.01 260);
         border-left: 3px solid oklch(0.64 0.14 var(--track-hue));
         background: oklch(0.16 0.008 260);
@@ -519,17 +540,20 @@
       .rt-track-gutter {
         display: grid;
         align-content: start;
-        gap: 8px;
+        gap: 6px;
         padding: 1px 2px;
       }
 
-      .rt-track-gutter > input {
+      .rt-track-head input {
+        min-width: 0;
+        min-height: 28px;
+        padding: 0 7px;
         font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
         font-weight: 600;
       }
 
-      .rt-track-tools {
-        justify-content: space-between;
+      .rt-track-head {
+        width: 100%;
       }
 
       .rt-block-actions,
@@ -546,7 +570,7 @@
 
       .rt-ctrls {
         display: grid;
-        gap: 9px;
+        gap: 6px;
       }
 
       .rt-ctrl {
@@ -571,8 +595,8 @@
 
       .rt-cell-strip {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-        gap: 8px;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 6px;
         align-items: stretch;
       }
 
@@ -601,7 +625,7 @@
 
       .rt-cell,
       .rt-cell-add {
-        min-height: 172px;
+        min-height: 138px;
         border: 1px solid oklch(0.27 0.01 260);
         border-radius: 8px;
         background: oklch(0.14 0.008 260);
@@ -609,12 +633,14 @@
 
       .rt-cell {
         display: grid;
-        gap: 8px;
-        padding: 10px;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        gap: 5px;
+        padding: 7px;
       }
 
       .rt-drag-handle {
-        width: 28px;
+        width: 24px;
+        min-width: 24px;
         min-height: 24px;
         display: inline-flex;
         align-items: center;
@@ -637,9 +663,9 @@
 
       .rt-cell-grip,
       .rt-cell-select {
-        width: 28px;
-        min-width: 28px;
-        height: 28px;
+        width: 24px;
+        min-width: 24px;
+        height: 24px;
         min-height: 24px;
         display: inline-flex;
         align-items: center;
@@ -662,11 +688,11 @@
 
       .rt-cell-select {
         appearance: auto;
-        width: 16px;
-        min-width: 16px;
-        height: 16px;
-        min-height: 16px;
-        margin: 0 6px;
+        width: 15px;
+        min-width: 15px;
+        height: 15px;
+        min-height: 15px;
+        margin: 0 3px;
         padding: 0;
         border-radius: 50%;
         color: oklch(0.68 0.03 200);
@@ -679,15 +705,16 @@
       }
 
       .rt-track-grip {
-        justify-self: start;
+        flex: 0 0 auto;
       }
 
       .rt-cell-head {
-        grid-template-columns: auto auto 1fr;
+        min-height: 26px;
       }
 
-      .rt-cell-state {
-        justify-self: end;
+      .rt-cell-spacer {
+        flex: 1 1 auto;
+        min-width: 4px;
       }
 
       .rt-track.is-track-drop-before {

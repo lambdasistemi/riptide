@@ -153,23 +153,23 @@ trackRow actions app track =
       , HE.onDrop (actions.dropOn target)
       ]
       [ HH.div [ HP.classes [ HH.ClassName "rt-track-gutter" ] ]
-          [ HH.button
-              [ HP.type_ HP.ButtonButton
-              , HP.title "Drag track"
-              , HP.classes [ HH.ClassName "rt-drag-handle", HH.ClassName "rt-track-grip" ]
-              , HP.draggable true
-              , HE.onDragStart \_ -> actions.startTrackDrag track.id
-              , HE.onDragEnd \_ -> actions.endDrag
-              ]
-              [ Icons.icon Grip ]
-          , HH.input
-              [ HP.type_ HP.InputText
-              , HP.value track.name
-              , HE.onValueInput (actions.renameTrack track.id)
-              ]
-          , HH.div [ HP.classes [ HH.ClassName "rt-track-tools" ] ]
+          [ HH.div [ HP.classes [ HH.ClassName "rt-track-head" ] ]
               (
-              [ Icons.iconButton "Stop track" Stop (actions.stopTrack track.id)
+              [ HH.button
+                  [ HP.type_ HP.ButtonButton
+                  , HP.title "Drag track"
+                  , HP.classes [ HH.ClassName "rt-drag-handle", HH.ClassName "rt-track-grip" ]
+                  , HP.draggable true
+                  , HE.onDragStart \_ -> actions.startTrackDrag track.id
+                  , HE.onDragEnd \_ -> actions.endDrag
+                  ]
+                  [ Icons.icon Grip ]
+              , HH.input
+                  [ HP.type_ HP.InputText
+                  , HP.value track.name
+                  , HE.onValueInput (actions.renameTrack track.id)
+                  ]
+              , Icons.iconButton "Stop track" Stop (actions.stopTrack track.id)
               ]
                 <> confirmDeleteButtons "track" confirming (actions.deleteTrack track.id) actions.cancelConfirm
               )
@@ -216,6 +216,7 @@ cellTile actions app track cell =
       , HE.onDrop (actions.dropOn target)
       ]
       [ HH.div [ HP.classes [ HH.ClassName "rt-cell-head" ] ]
+          (
           [ HH.button
               [ HP.type_ HP.ButtonButton
               , HP.title "Drag cell"
@@ -236,7 +237,14 @@ cellTile actions app track cell =
               , HE.onClick \_ -> actions.selectCell track.id cell.id
               ]
           , HH.span [ HP.classes [ HH.ClassName "rt-cell-state" ] ] [ HH.text (cellStateLabel result active selected editing) ]
+          , HH.div [ HP.classes [ HH.ClassName "rt-cell-spacer" ] ] []
+          , Icons.iconButtonDisabled (if active then "Stop cell" else "Launch cell")
+              (if active then Stop else Play)
+              launchDisabled
+              (actions.toggleCell track.id cell.id)
           ]
+            <> confirmDeleteButtons "cell" confirming (actions.deleteCell track.id cell.id) actions.cancelConfirm
+          )
       , HH.textarea
           [ HP.value cell.code
           , HP.rows 3
@@ -245,15 +253,6 @@ cellTile actions app track cell =
           , HE.onBlur \_ -> actions.blurCell cell.id
           , HE.onValueInput (actions.editCode track.id cell.id)
           ]
-      , HH.div [ HP.classes [ HH.ClassName "rt-cell-actions" ] ]
-          (
-          [ Icons.iconButtonDisabled (if active then "Stop cell" else "Launch cell")
-              (if active then Stop else Play)
-              launchDisabled
-              (actions.toggleCell track.id cell.id)
-          ]
-            <> confirmDeleteButtons "cell" confirming (actions.deleteCell track.id cell.id) actions.cancelConfirm
-          )
       , case result.error of
           Just err ->
             HH.div [ HP.classes [ HH.ClassName "rt-cell-error" ] ] [ HH.text err ]
