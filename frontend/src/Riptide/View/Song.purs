@@ -206,6 +206,7 @@ cellTile actions app track cell =
     canLaunch = app.engine && result.valid
     confirming = app.confirm == Just ("cell:" <> cell.id)
     target = cellTarget track.id cell.id
+    launchDisabled = not active && not canLaunch
   in
     HH.div
       [ HP.classes (cellClasses app target result active selected editing)
@@ -243,7 +244,7 @@ cellTile actions app track cell =
       , HH.div [ HP.classes [ HH.ClassName "rt-cell-actions" ] ]
           [ Icons.iconButtonDisabled (if active then "Stop cell" else "Launch cell")
               (if active then Stop else Play)
-              (not canLaunch)
+              launchDisabled
               (actions.toggleCell track.id cell.id)
           , Icons.dangerButton (if confirming then "Confirm delete cell" else "Delete cell")
               (if confirming then Check else Delete)

@@ -347,7 +347,7 @@ handleAction = case _ of
     H.modify_ (Reducer.selectCell trackId cellId)
   ToggleCell trackId cellId -> do
     before <- H.get
-    if before.engine && cellIsLaunchable trackId cellId before then do
+    if before.engine && (cellIsLaunchable trackId cellId before || cellIsActive trackId cellId before) then do
       let after = Reducer.toggleCell trackId cellId before
       H.put after
       sendPlaybackTransitions before after
@@ -494,6 +494,15 @@ cellIsLaunchable trackId cellId app =
           case Array.find (_.id >>> (_ == cellId)) track.cells of
             Just cell -> (authoritativeValidation app.backendValidation cell.code).valid
             Nothing -> false
+        Nothing -> false
+    Nothing -> false
+
+cellIsActive :: TrackId -> CellId -> App -> Boolean
+cellIsActive trackId cellId app =
+  case app.currentSongId >>= \songId -> songById songId app of
+    Just song ->
+      case Array.find (_.id >>> (_ == trackId)) song.tracks of
+        Just track -> track.active == Just cellId
         Nothing -> false
     Nothing -> false
 
