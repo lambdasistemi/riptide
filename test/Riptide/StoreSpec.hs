@@ -38,8 +38,8 @@ import Test.Hspec
     ( Spec
     , describe
     , it
-    , shouldSatisfy
     , shouldReturn
+    , shouldSatisfy
     )
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck
@@ -135,7 +135,7 @@ loadsDefinitionsBeforeTracks source =
     findIndexText needle =
         lookup True $
             zip
-                (fmap (needle `isInfixOf`) $ lines source)
+                ((needle `isInfixOf`) <$> lines source)
                 [0 :: Int ..]
 
 withTempDir :: (FilePath -> IO a) -> IO a

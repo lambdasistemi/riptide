@@ -46,7 +46,7 @@ library
 
   build-depends:
     , aeson
-    , base     <5
+    , base       <5
     , directory
     , filepath
     , hint
@@ -72,6 +72,7 @@ test-suite unit-tests
   other-modules:
     Riptide.SessionSpec
     Riptide.StoreSpec
+
   build-depends:
     , base        <5
     , directory

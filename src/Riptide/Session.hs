@@ -23,19 +23,18 @@ module Riptide.Session
     , silenceTrack
     ) where
 
-{- |
-Module      : Riptide.Session
-Description : Pure session state and reducers for riptide.
-Copyright   : (c) Paolo Veronelli, 2026
-License     : BSD-3-Clause
+-- \|
+-- Module      : Riptide.Session
+-- Description : Pure session state and reducers for riptide.
+-- Copyright   : (c) Paolo Veronelli, 2026
+-- License     : BSD-3-Clause
+--
+-- This module owns the pure backend session domain. Tracks receive hidden Tidal
+-- slots from a bounded pool, while performer-facing state is expressed in opaque
+-- track, text, and definition identifiers.
 
-This module owns the pure backend session domain. Tracks receive hidden Tidal
-slots from a bounded pool, while performer-facing state is expressed in opaque
-track, text, and definition identifiers.
--}
-
-import Data.List (find)
 import Data.Aeson (FromJSON, ToJSON)
+import Data.List (find)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
@@ -323,7 +322,7 @@ trackHasText :: TextId -> Track -> Bool
 trackHasText textIdent =
     any ((== textIdent) . trackTextId) . trackTexts
 
-clearReference :: Eq a => a -> Maybe a -> Maybe a
+clearReference :: (Eq a) => a -> Maybe a -> Maybe a
 clearReference ident ref
     | ref == Just ident = Nothing
     | otherwise = ref
