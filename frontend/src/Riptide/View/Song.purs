@@ -13,6 +13,8 @@ import Halogen.HTML.Properties as HP
 import Riptide.Action (ControlKey(..))
 import Riptide.Model (App, Cell, CellId, DropTarget, EditingTarget, Song, SongId, Track, TrackId)
 import Riptide.Validation (ValidationResult, authoritativeValidation)
+import Riptide.View.Icons (Icon(..))
+import Riptide.View.Icons as Icons
 import Riptide.View.Score as Score
 import Web.HTML.Event.DragEvent (DragEvent)
 
@@ -57,7 +59,7 @@ render actions app =
     [ HH.div [ HP.classes [ HH.ClassName "rt-rail" ] ]
         [ HH.div [ HP.classes [ HH.ClassName "rt-rail-head" ] ]
             [ HH.div [ HP.classes [ HH.ClassName "rt-rail-title" ] ] [ HH.text "Songs" ]
-            , iconButton "New song" "+" actions.newSong
+            , Icons.iconButton "New song" Add actions.newSong
             ]
         , HH.div_ (map (songRow actions app) app.songs)
         ]
@@ -99,11 +101,11 @@ songRow actions app song =
           , HH.small_ [ HH.text (show (Array.length song.tracks) <> " tracks") ]
           ]
       , HH.div [ HP.classes [ HH.ClassName "rt-row-actions" ] ]
-          [ iconButton "Open song" "open" (actions.openSong song.id)
-          , iconButton "Rename song" "rename" (actions.startEdit "song" song.id)
-          , iconButton "Duplicate song" "copy" (actions.duplicateSong song.id)
-          , dangerButton (if confirming then "Confirm delete song" else "Delete song")
-              (if confirming then "confirm" else "delete")
+          [ Icons.iconButton "Open song" Eye (actions.openSong song.id)
+          , Icons.iconButton "Rename song" Edit (actions.startEdit "song" song.id)
+          , Icons.iconButton "Duplicate song" Copy (actions.duplicateSong song.id)
+          , Icons.dangerButton (if confirming then "Confirm delete song" else "Delete song")
+              (if confirming then Check else Delete)
               (actions.deleteSong song.id)
           ]
       ]
@@ -117,11 +119,7 @@ songShell actions app song =
           ]
       , HH.div [ HP.classes [ HH.ClassName "rt-header-actions" ] ]
           [ HH.div [ HP.classes [ HH.ClassName "rt-count" ] ] [ HH.text (show (Array.length song.tracks) <> " tracks") ]
-          , HH.button
-              [ HP.type_ HP.ButtonButton
-              , HE.onClick \_ -> actions.addTrack
-              ]
-              [ HH.text "Add track" ]
+          , Icons.iconButton "Add track" Add actions.addTrack
           ]
       ]
   , HH.div [ HP.classes [ HH.ClassName "rt-launch-grid" ] ] (map (trackRow actions app) song.tracks)
@@ -161,20 +159,16 @@ trackRow actions app track =
               , HE.onDragStart \_ -> actions.startTrackDrag track.id
               , HE.onDragEnd \_ -> actions.endDrag
               ]
-              [ HH.text "grip" ]
+              [ Icons.icon Grip ]
           , HH.input
               [ HP.type_ HP.InputText
               , HP.value track.name
               , HE.onValueInput (actions.renameTrack track.id)
               ]
           , HH.div [ HP.classes [ HH.ClassName "rt-track-tools" ] ]
-              [ HH.button
-                  [ HP.type_ HP.ButtonButton
-                  , HE.onClick \_ -> actions.stopTrack track.id
-                  ]
-                  [ HH.text "Stop" ]
-              , dangerButton (if confirming then "Confirm delete track" else "Delete track")
-                  (if confirming then "confirm" else "delete")
+              [ Icons.iconButton "Stop track" Stop (actions.stopTrack track.id)
+              , Icons.dangerButton (if confirming then "Confirm delete track" else "Delete track")
+                  (if confirming then Check else Delete)
                   (actions.deleteTrack track.id)
               ]
           , HH.div [ HP.classes [ HH.ClassName "rt-ctrls" ] ]
@@ -227,13 +221,15 @@ cellTile actions app track cell =
               , HE.onDragStart \_ -> actions.startCellDrag track.id cell.id
               , HE.onDragEnd \_ -> actions.endDrag
               ]
-              [ HH.text "grip" ]
+              [ Icons.icon Grip ]
           , HH.button
               [ HP.type_ HP.ButtonButton
+              , HP.title (if selected then "Selected cell" else "Select cell")
+              , HP.attr (HH.AttrName "aria-label") (if selected then "Selected cell" else "Select cell")
               , HP.classes [ HH.ClassName "rt-cell-select" ]
               , HE.onClick \_ -> actions.selectCell track.id cell.id
               ]
-              [ HH.text (if selected then "armed" else "select") ]
+              [ Icons.icon Eye ]
           , HH.span [ HP.classes [ HH.ClassName "rt-cell-state" ] ] [ HH.text (cellStateLabel result active selected editing) ]
           ]
       , HH.textarea
@@ -245,14 +241,12 @@ cellTile actions app track cell =
           , HE.onValueInput (actions.editCode track.id cell.id)
           ]
       , HH.div [ HP.classes [ HH.ClassName "rt-cell-actions" ] ]
-          [ HH.button
-              [ HP.type_ HP.ButtonButton
-              , HP.disabled (not canLaunch)
-              , HE.onClick \_ -> actions.toggleCell track.id cell.id
-              ]
-              [ HH.text (if active then "Stop" else "Launch") ]
-          , dangerButton (if confirming then "Confirm delete cell" else "Delete cell")
-              (if confirming then "confirm" else "delete")
+          [ Icons.iconButtonDisabled (if active then "Stop cell" else "Launch cell")
+              (if active then Stop else Play)
+              (not canLaunch)
+              (actions.toggleCell track.id cell.id)
+          , Icons.dangerButton (if confirming then "Confirm delete cell" else "Delete cell")
+              (if confirming then Check else Delete)
               (actions.deleteCell track.id cell.id)
           ]
       , case result.error of
@@ -269,6 +263,8 @@ addCellTile actions app trackId =
   in
   HH.button
     [ HP.type_ HP.ButtonButton
+    , HP.title "Add cell"
+    , HP.attr (HH.AttrName "aria-label") "Add cell"
     , HP.classes
         [ HH.ClassName "rt-cell-add"
         , if overTarget target app.over then HH.ClassName "is-cell-append-drop" else HH.ClassName "is-not-cell-append-drop"
@@ -277,7 +273,7 @@ addCellTile actions app trackId =
     , HE.onDragOver (actions.dragOver target)
     , HE.onDrop (actions.dropOn target)
     ]
-    [ HH.text "+ cell" ]
+    [ Icons.icon Add ]
 
 trackClasses :: App -> DropTarget -> Array HH.ClassName
 trackClasses app target =
@@ -321,25 +317,6 @@ cellStateLabel result active selected editing
   | selected = "armed"
   | result.empty = "empty"
   | otherwise = "idle"
-
-iconButton :: forall action slots m. String -> String -> action -> HH.ComponentHTML action slots m
-iconButton title label action =
-  HH.button
-    [ HP.type_ HP.ButtonButton
-    , HP.title title
-    , HE.onClick \_ -> action
-    ]
-    [ HH.text label ]
-
-dangerButton :: forall action slots m. String -> String -> action -> HH.ComponentHTML action slots m
-dangerButton title label action =
-  HH.button
-    [ HP.type_ HP.ButtonButton
-    , HP.title title
-    , HP.classes [ HH.ClassName "rt-danger" ]
-    , HE.onClick \_ -> action
-    ]
-    [ HH.text label ]
 
 emptyShell :: forall action slots m. Array (HH.ComponentHTML action slots m)
 emptyShell =

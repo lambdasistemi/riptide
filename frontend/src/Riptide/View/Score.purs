@@ -14,6 +14,8 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Riptide.Helpers (effectiveSelected, normalizeScore)
 import Riptide.Model (App, Cell, Song, Track, TrackId, totalBars)
+import Riptide.View.Icons (Icon(..))
+import Riptide.View.Icons as Icons
 
 type ScoreActions action =
   { startPaint :: TrackId -> Int -> action
@@ -65,17 +67,11 @@ toolbar actions app curBar =
         , HH.h2_ [ HH.text (if app.playing then "Timeline running" else "Timeline paused") ]
         ]
     , HH.div [ HP.classes [ HH.ClassName "rt-score-controls" ] ]
-        [ HH.button
-            [ HP.type_ HP.ButtonButton
-            , HP.classes [ HH.ClassName "rt-score-play" ]
-            , HE.onClick \_ -> actions.togglePlay
-            ]
-            [ HH.text (if app.playing then "Pause" else "Play") ]
-        , HH.button
-            [ HP.type_ HP.ButtonButton
-            , HE.onClick \_ -> actions.toggleLoop
-            ]
-            [ HH.text (if app.loopOn then "Loop on" else "Loop off") ]
+        [ Icons.iconButtonWithClasses (if app.playing then "Pause timeline" else "Play timeline")
+            (if app.playing then Pause else Play)
+            [ HH.ClassName "rt-score-play" ]
+            actions.togglePlay
+        , Icons.iconButton (if app.loopOn then "Disable loop" else "Enable loop") Loop actions.toggleLoop
         , HH.span [ HP.classes [ HH.ClassName "rt-score-readout" ] ]
             [ HH.text
                 ( "BAR " <> show (curBar + 1) <> " / "
@@ -84,10 +80,10 @@ toolbar actions app curBar =
             ]
         ]
     , HH.div [ HP.classes [ HH.ClassName "rt-loop-controls" ] ]
-        [ HH.button [ HP.type_ HP.ButtonButton, HE.onClick \_ -> actions.moveLoop (-1) ] [ HH.text "<" ]
+        [ Icons.iconButton "Move loop earlier" ArrowLeft (actions.moveLoop (-1))
         , numberField "Start" (app.loopStart + 1) (actions.setLoopStart <<< zeroBased)
         , numberField "End" app.loopEnd actions.setLoopEnd
-        , HH.button [ HP.type_ HP.ButtonButton, HE.onClick \_ -> actions.moveLoop 1 ] [ HH.text ">" ]
+        , Icons.iconButton "Move loop later" ArrowRight (actions.moveLoop 1)
         ]
     ]
 
