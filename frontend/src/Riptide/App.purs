@@ -1,5 +1,7 @@
 module Riptide.App
-  ( component
+  ( commandsForSocketOpen
+  , component
+  , sessionFromApp
   ) where
 
 import Prelude
@@ -13,7 +15,7 @@ import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Riptide.Action (ControlKey)
 import Riptide.ImportExport as ImportExport
-import Riptide.Model (App, Block, BlockId, CellId, ConnectionState(..), DropTarget, Page(..), Song, SongId, Toolbox, ToolboxId, Track, TrackId, canUseBackend)
+import Riptide.Model (App, Block, BlockId, Cell, CellId, ConnectionState(..), DropTarget, Page(..), Song, SongId, Toolbox, ToolboxId, Track, TrackId, canUseBackend, totalBars)
 import Riptide.Protocol.Client as Protocol
 import Riptide.Reducer as Reducer
 import Riptide.Validation (authoritativeValidation)
@@ -576,8 +578,10 @@ handleSocketEvent :: forall output m. MonadAff m => H.SubscriptionId -> WebSocke
 handleSocketEvent subscriptionId = case _ of
   WebSocket.WebSocketReady socket ->
     H.modify_ (Reducer.setWebSocket (Just socket))
-  WebSocket.WebSocketOpened ->
+  WebSocket.WebSocketOpened -> do
     H.modify_ (Reducer.setConnection Connected)
+    app <- H.get
+    traverse_ sendWhenConnected (commandsForSocketOpen app)
   WebSocket.WebSocketClosed -> do
     H.unsubscribe subscriptionId
     H.modify_ (Reducer.setWebSocket Nothing <<< Reducer.setConnection Disconnected)
@@ -611,6 +615,42 @@ sendWhenConnected command = do
       H.liftEffect (WebSocket.sendCommand socket command)
     _ ->
       pure unit
+
+commandsForSocketOpen :: App -> Array Protocol.ClientCommand
+commandsForSocketOpen app =
+  [ Protocol.SetSession (sessionFromApp app) ]
+
+sessionFromApp :: App -> Protocol.Session
+sessionFromApp app =
+  { sessionSlotCapacity: totalBars
+  , sessionTracks:
+      Array.mapWithIndex trackFromApp (currentTracks app)
+  , sessionDefinitions: blockFromApp <$> currentBlocks app
+  }
+
+trackFromApp :: Int -> Track -> Protocol.Track
+trackFromApp index track =
+  { trackId: track.id
+  , trackName: track.name
+  , trackSlot: index + 1
+  , trackTexts: textFromApp <$> track.cells
+  , trackActiveText: track.active
+  , trackSelectedText: track.selected
+  }
+
+textFromApp :: Cell -> Protocol.TrackText
+textFromApp cell =
+  { trackTextId: cell.id
+  , trackTextSource: cell.code
+  }
+
+blockFromApp :: Block -> Protocol.Block
+blockFromApp block =
+  { blockId: block.id
+  , blockName: block.name
+  , blockCode: block.code
+  , blockApplied: block.applied
+  }
 
 sendPlaybackTransitions :: forall output m. MonadAff m => App -> App -> H.HalogenM App Action () output m Unit
 sendPlaybackTransitions before after =

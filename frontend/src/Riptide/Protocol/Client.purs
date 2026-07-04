@@ -20,7 +20,8 @@ import Data.Argonaut.Core (Json, fromString, stringify)
 import Data.Argonaut.Decode (class DecodeJson, JsonDecodeError(..), decodeJson, fromJsonString, printJsonDecodeError, (.:))
 import Data.Argonaut.Encode (class EncodeJson, encodeJson)
 import Data.Either (Either(..))
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe(..))
+import Data.String.Common as String
 import Foreign.Object (Object)
 
 type TrackId = String
@@ -56,6 +57,7 @@ type Session =
 
 data ClientCommand
   = ValidateText String
+  | SetSession Session
   | ActivateTrackText TrackId CellId
   | SilenceTrack TrackId
   | SaveTrackText TrackId CellId String
@@ -67,6 +69,7 @@ derive instance eqClientCommand :: Eq ClientCommand
 instance showClientCommand :: Show ClientCommand where
   show = case _ of
     ValidateText text -> "(ValidateText " <> show text <> ")"
+    SetSession session -> "(SetSession " <> show session <> ")"
     ActivateTrackText trackId cellId -> "(ActivateTrackText " <> show trackId <> " " <> show cellId <> ")"
     SilenceTrack trackId -> "(SilenceTrack " <> show trackId <> ")"
     SaveTrackText trackId cellId text -> "(SaveTrackText " <> show trackId <> " " <> show cellId <> " " <> show text <> ")"
@@ -79,6 +82,11 @@ encodeClientCommand = case _ of
     object
       [ field "type" "validateText"
       , field "text" text
+      ]
+  SetSession session ->
+    object
+      [ field "type" "setSession"
+      , fieldJson "session" (sessionJson session)
       ]
   ActivateTrackText trackId cellId ->
     object
@@ -124,6 +132,8 @@ instance decodeJsonClientCommand :: DecodeJson ClientCommand where
     case commandType of
       "validateText" ->
         ValidateText <$> value .: "text"
+      "setSession" ->
+        SetSession <$> value .: "session"
       "activateTrackText" ->
         ActivateTrackText <$> value .: "trackId" <*> value .: "textId"
       "silenceTrack" ->
@@ -202,18 +212,63 @@ field :: String -> String -> String
 field key value =
   quote key <> ":" <> quote value
 
+fieldJson :: String -> String -> String
+fieldJson key value =
+  quote key <> ":" <> value
+
 object :: Array String -> String
 object fields =
   "{" <> joinWithComma fields <> "}"
 
+sessionJson :: Session -> String
+sessionJson session =
+  object
+    [ fieldJson "sessionSlotCapacity" (show session.sessionSlotCapacity)
+    , fieldJson "sessionTracks" (arrayJson trackJson session.sessionTracks)
+    , fieldJson "sessionDefinitions" (arrayJson blockJson session.sessionDefinitions)
+    ]
+
+trackJson :: Track -> String
+trackJson track =
+  object
+    [ field "trackId" track.trackId
+    , field "trackName" track.trackName
+    , fieldJson "trackSlot" (show track.trackSlot)
+    , fieldJson "trackTexts" (arrayJson trackTextJson track.trackTexts)
+    , fieldJson "trackActiveText" (maybeStringJson track.trackActiveText)
+    , fieldJson "trackSelectedText" (maybeStringJson track.trackSelectedText)
+    ]
+
+trackTextJson :: TrackText -> String
+trackTextJson text =
+  object
+    [ field "trackTextId" text.trackTextId
+    , field "trackTextSource" text.trackTextSource
+    ]
+
+blockJson :: Block -> String
+blockJson block =
+  object
+    [ field "blockId" block.blockId
+    , field "blockName" block.blockName
+    , field "blockCode" block.blockCode
+    , field "blockApplied" block.blockApplied
+    ]
+
+arrayJson :: forall a. (a -> String) -> Array a -> String
+arrayJson encode =
+  case _ of
+    [] -> "[]"
+    values -> "[" <> joinWithComma (map encode values) <> "]"
+
+maybeStringJson :: Maybe String -> String
+maybeStringJson = case _ of
+  Just value -> quote value
+  Nothing -> "null"
+
 joinWithComma :: Array String -> String
-joinWithComma = case _ of
-  [] -> ""
-  [ one ] -> one
-  [ one, two ] -> one <> "," <> two
-  [ one, two, three ] -> one <> "," <> two <> "," <> three
-  [ one, two, three, four ] -> one <> "," <> two <> "," <> three <> "," <> four
-  fields -> stringify (encodeJson fields)
+joinWithComma =
+  String.joinWith ","
 
 quote :: String -> String
 quote =
