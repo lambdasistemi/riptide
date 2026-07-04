@@ -240,20 +240,37 @@ async function assertFrontendInteractions(cdp) {
     for (const button of buttons) {
       const svg = button.querySelector("svg");
       const svgBox = svg?.getBoundingClientRect();
+      const buttonBox = button.getBoundingClientRect();
+      const style = getComputedStyle(button);
       const visibleGraphic = [...(svg?.querySelectorAll(graphicSelector) || [])].some(isVisibleGraphic);
       if (!svg || !svgBox || svgBox.width === 0 || svgBox.height === 0 || !visibleGraphic) {
         failures.push(button.getAttribute("aria-label") || button.title || button.className || "unknown icon button");
+        continue;
+      }
+      const dx = Math.abs((svgBox.left + svgBox.width / 2) - (buttonBox.left + buttonBox.width / 2));
+      const dy = Math.abs((svgBox.top + svgBox.height / 2) - (buttonBox.top + buttonBox.height / 2));
+      if (!["flex", "inline-flex"].includes(style.display) || dx > 1 || dy > 1) {
+        failures.push((button.getAttribute("aria-label") || button.title || button.className || "unknown icon button") + " not centered");
       }
     }
     if (failures.length > 0) {
-      throw new Error("icon buttons without visible SVG glyphs: " + failures.join(", "));
+      throw new Error("icon button glyph failures: " + failures.join(", "));
     }
 
-    for (const selector of [".rt-cell-grip", ".rt-cell-select"]) {
+    for (const selector of [".rt-cell-grip", ".rt-cell-select", ".rt-cell-add"]) {
       const button = document.querySelector(selector);
+      const svg = button?.querySelector("svg");
       const glyph = button?.querySelector(graphicSelector);
       if (!button || !glyph || !isVisibleGraphic(glyph)) {
         throw new Error(selector + " does not contain a visible icon glyph");
+      }
+      const style = getComputedStyle(button);
+      const buttonBox = button.getBoundingClientRect();
+      const svgBox = svg.getBoundingClientRect();
+      const dx = Math.abs((svgBox.left + svgBox.width / 2) - (buttonBox.left + buttonBox.width / 2));
+      const dy = Math.abs((svgBox.top + svgBox.height / 2) - (buttonBox.top + buttonBox.height / 2));
+      if (!["flex", "inline-flex"].includes(style.display) || dx > 1 || dy > 1) {
+        throw new Error(selector + " icon glyph is not centered");
       }
     }
   })()`);
@@ -273,13 +290,48 @@ async function assertFrontendInteractions(cdp) {
   await waitForCondition(cdp, `(() => Boolean(document.querySelector(".rt-cell.is-stopped .rt-cell-actions button[title='Launch cell']:not(:disabled)")))()`, 2000, "second launch click did not stop/un-arm the active cell");
 
   await evaluateOrThrow(cdp, `(() => {
-    const button = document.querySelector(".rt-danger[title^='Delete ']");
-    if (!button) throw new Error("missing delete danger button");
+    const cell = [...document.querySelectorAll(".rt-cell")]
+      .find((candidate) => (candidate.querySelector("textarea")?.value || "").includes('s "bd*2 sn:3"'));
+    const button = cell?.querySelector(".rt-danger[title='Delete cell']");
+    if (!button) throw new Error("missing delete danger button for target seed cell");
     const before = button.title;
     button.click();
     return before;
   })()`);
-  await waitForCondition(cdp, `(() => Boolean(document.querySelector(".rt-danger[title^='Confirm delete ']")))()`, 2000, "delete danger button did not arm for confirmation");
+  await waitForCondition(cdp, `(() => Boolean(document.querySelector(".rt-danger[title='Confirm delete cell']")))()`, 2000, "delete danger button did not arm for confirmation");
+
+  await evaluateOrThrow(cdp, `(() => {
+    const confirmButton = document.querySelector(".rt-danger[title='Confirm delete cell']");
+    if (!confirmButton) throw new Error("missing armed confirm delete cell button");
+    const cancelButton = [...document.querySelectorAll("button")]
+      .find((button) => button.title === "Cancel delete cell" || button.getAttribute("aria-label") === "Cancel delete cell");
+    if (!cancelButton) throw new Error("missing explicit cancel delete cell button");
+    cancelButton.click();
+  })()`);
+  await waitForCondition(cdp, `(() => {
+    return Boolean(document.querySelector(".rt-danger[title='Delete cell']"))
+      && !document.querySelector(".rt-danger[title^='Confirm delete ']")
+      && [...document.querySelectorAll(".rt-cell")].some((cell) => (cell.querySelector("textarea")?.value || "").includes('s "bd*2 sn:3"'));
+  })()`, 2000, "cancel delete did not clear confirmation while preserving the cell");
+
+  await evaluateOrThrow(cdp, `(() => {
+    const cell = [...document.querySelectorAll(".rt-cell")]
+      .find((candidate) => (candidate.querySelector("textarea")?.value || "").includes('s "bd*2 sn:3"'));
+    const button = cell?.querySelector(".rt-danger[title='Delete cell']");
+    if (!button) throw new Error("missing target seed cell delete button after cancel");
+    button.click();
+  })()`);
+  await waitForCondition(cdp, `(() => Boolean(document.querySelector(".rt-danger[title='Confirm delete cell']")))()`, 2000, "delete cell did not re-arm after cancel");
+  await evaluateOrThrow(cdp, `(() => {
+    const cell = [...document.querySelectorAll(".rt-cell")]
+      .find((candidate) => (candidate.querySelector("textarea")?.value || "").includes('s "bd*2 sn:3"'));
+    const button = cell?.querySelector(".rt-danger[title='Confirm delete cell']");
+    if (!button) throw new Error("missing target seed cell confirm delete button");
+    button.click();
+  })()`);
+  await waitForCondition(cdp, `(() => {
+    return ![...document.querySelectorAll(".rt-cell")].some((cell) => (cell.querySelector("textarea")?.value || "").includes('s "bd*2 sn:3"'));
+  })()`, 2000, "second confirm delete click did not remove the cell");
 }
 
 async function evaluateOrThrow(cdp, expression) {

@@ -10,6 +10,7 @@ module Riptide.Reducer
   , deleteBlock
   , deleteSong
   , deleteToolbox
+  , cancelConfirm
   , duplicateSong
   , duplicateToolbox
   , editBlockCode
@@ -437,6 +438,10 @@ endResizeScore :: App -> App
 endResizeScore app =
   app { resizing = false }
 
+cancelConfirm :: App -> App
+cancelConfirm app =
+  app { confirm = Nothing }
+
 setPaint :: TrackId -> Int -> Boolean -> App -> App
 setPaint trackId bar value =
   mapTrack trackId \track ->
@@ -517,7 +522,7 @@ armDelete key action app =
   if app.confirm == Just key then
     (action app) { confirm = Nothing }
   else
-    app { confirm = Just key }
+    app { confirm = Just key, confirmToken = app.confirmToken + 1 }
 
 mapCurrentSongTracks :: (Track -> Track) -> App -> App
 mapCurrentSongTracks f =

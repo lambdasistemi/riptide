@@ -97,6 +97,7 @@ type App =
   , hoverCell :: Maybe CellId
   , focusCell :: Maybe CellId
   , confirm :: Maybe String
+  , confirmToken :: Int
   , editing :: Maybe EditingTarget
   , drag :: Maybe DragState
   , over :: Maybe DropTarget
@@ -187,6 +188,7 @@ defaultApp =
   , hoverCell: Nothing
   , focusCell: Nothing
   , confirm: Nothing
+  , confirmToken: 0
   , editing: Nothing
   , drag: Nothing
   , over: Nothing

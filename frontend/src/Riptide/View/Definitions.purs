@@ -15,19 +15,21 @@ import Riptide.Model (App, Block, BlockId, EditingTarget, Toolbox, ToolboxId)
 import Riptide.Validation (ValidationResult, authoritativeValidation)
 import Riptide.View.Icons (Icon(..))
 import Riptide.View.Icons as Icons
+import Web.UIEvent.MouseEvent (MouseEvent)
 
 type DefinitionsActions action =
   { newToolbox :: action
   , openToolbox :: ToolboxId -> action
   , renameToolbox :: ToolboxId -> String -> action
   , duplicateToolbox :: ToolboxId -> action
-  , deleteToolbox :: ToolboxId -> action
+  , deleteToolbox :: ToolboxId -> MouseEvent -> action
+  , cancelConfirm :: MouseEvent -> action
   , addBlock :: action
   , renameBlock :: BlockId -> String -> action
   , editBlockCode :: BlockId -> String -> action
   , applyBlock :: BlockId -> action
   , applyAll :: action
-  , deleteBlock :: BlockId -> action
+  , deleteBlock :: BlockId -> MouseEvent -> action
   , startEdit :: String -> String -> action
   , stopEdit :: action
   }
@@ -81,13 +83,13 @@ toolboxRow actions app toolbox =
           , HH.small_ [ HH.text (toolboxMeta app toolbox) ]
           ]
       , HH.div [ HP.classes [ HH.ClassName "rt-row-actions" ] ]
+          (
           [ Icons.iconButton "Open toolbox" Eye (actions.openToolbox toolbox.id)
           , Icons.iconButton "Rename toolbox" Edit (actions.startEdit "tbx" toolbox.id)
           , Icons.iconButton "Duplicate toolbox" Copy (actions.duplicateToolbox toolbox.id)
-          , Icons.dangerButton (if confirming then "Confirm delete toolbox" else "Delete toolbox")
-              (if confirming then Check else Delete)
-              (actions.deleteToolbox toolbox.id)
           ]
+            <> confirmDeleteButtons "toolbox" confirming (actions.deleteToolbox toolbox.id) actions.cancelConfirm
+          )
       ]
 
 toolboxShell :: forall action slots m. DefinitionsActions action -> App -> Toolbox -> Array (HH.ComponentHTML action slots m)
@@ -142,11 +144,11 @@ blockCard actions app block =
           , HH.span [ HP.classes [ HH.ClassName "rt-badge" ] ] [ HH.text (show impact.count <> " live uses") ]
           ]
       , HH.div [ HP.classes [ HH.ClassName "rt-block-actions" ] ]
+          (
           [ Icons.iconButtonDisabled "Apply definition" Check (not canApply) (actions.applyBlock block.id)
-          , Icons.dangerButton (if confirming then "Confirm delete block" else "Delete block")
-              (if confirming then Check else Delete)
-              (actions.deleteBlock block.id)
           ]
+            <> confirmDeleteButtons "block" confirming (actions.deleteBlock block.id) actions.cancelConfirm
+          )
       , case result.error of
           Just err ->
             HH.div [ HP.classes [ HH.ClassName "rt-block-error" ] ] [ HH.text err ]
@@ -179,6 +181,21 @@ cascadeEntry entry =
     [ HH.strong_ [ HH.text entry.loc ]
     , HH.code_ [ HH.text entry.code ]
     ]
+
+confirmDeleteButtons
+  :: forall action slots m
+   . String
+  -> Boolean
+  -> (MouseEvent -> action)
+  -> (MouseEvent -> action)
+  -> Array (HH.ComponentHTML action slots m)
+confirmDeleteButtons label confirming confirmAction cancelAction =
+  if confirming then
+    [ Icons.dangerButton ("Confirm delete " <> label) Check confirmAction
+    , Icons.cancelButton ("Cancel delete " <> label) cancelAction
+    ]
+  else
+    [ Icons.dangerButton ("Delete " <> label) Delete confirmAction ]
 
 currentToolbox :: App -> Maybe Toolbox
 currentToolbox app =
