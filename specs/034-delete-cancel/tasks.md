@@ -8,8 +8,8 @@
 - [X] T034-S1 Run `./gate.sh` and commit one bisect-safe changeset.
 
 ## Slice 2 - Cell control cleanup
-- [ ] T034-S2 Replace the cell eye select button with per-track radio groups wired to `selectCell`.
-- [ ] T034-S2 Replace the pause-like grip glyph with a subtle six-dot drag handle.
-- [ ] T034-S2 Adjust cell header CSS to read cleanly as grip, radio, state badge.
-- [ ] T034-S2 Extend browser smoke for radio mutual exclusion, grip shape, centered glyphs, and clean render.
-- [ ] T034-S2 Run `./gate.sh` and commit one bisect-safe changeset.
+- [X] T034-S2 Replace the cell eye select button with per-track radio groups wired to `selectCell`.
+- [X] T034-S2 Replace the pause-like grip glyph with a subtle six-dot drag handle.
+- [X] T034-S2 Adjust cell header CSS to read cleanly as grip, radio, state badge.
+- [X] T034-S2 Extend browser smoke for radio mutual exclusion, grip shape, centered glyphs, and clean render.
+- [X] T034-S2 Run `./gate.sh` and commit one bisect-safe changeset.

@@ -225,14 +225,16 @@ cellTile actions app track cell =
               , HE.onDragEnd \_ -> actions.endDrag
               ]
               [ Icons.icon Grip ]
-          , HH.button
-              [ HP.type_ HP.ButtonButton
+          , HH.input
+              [ HP.type_ HP.InputRadio
+              , HP.name ("cell-select-" <> track.id)
+              , HP.value cell.id
+              , HP.checked selected
               , HP.title (if selected then "Selected cell" else "Select cell")
               , HP.attr (HH.AttrName "aria-label") (if selected then "Selected cell" else "Select cell")
               , HP.classes [ HH.ClassName "rt-cell-select" ]
               , HE.onClick \_ -> actions.selectCell track.id cell.id
               ]
-              [ Icons.icon Eye ]
           , HH.span [ HP.classes [ HH.ClassName "rt-cell-state" ] ] [ HH.text (cellStateLabel result active selected editing) ]
           ]
       , HH.textarea

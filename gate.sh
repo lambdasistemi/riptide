@@ -257,7 +257,7 @@ async function assertFrontendInteractions(cdp) {
       throw new Error("icon button glyph failures: " + failures.join(", "));
     }
 
-    for (const selector of [".rt-cell-grip", ".rt-cell-select", ".rt-cell-add"]) {
+    for (const selector of [".rt-cell-grip", ".rt-cell-add"]) {
       const button = document.querySelector(selector);
       const svg = button?.querySelector("svg");
       const glyph = button?.querySelector(graphicSelector);
@@ -272,6 +272,79 @@ async function assertFrontendInteractions(cdp) {
       if (!["flex", "inline-flex"].includes(style.display) || dx > 1 || dy > 1) {
         throw new Error(selector + " icon glyph is not centered");
       }
+    }
+  })()`);
+
+  await evaluateOrThrow(cdp, `(() => {
+    const failures = [];
+    const tracks = [...document.querySelectorAll(".rt-track")];
+    if (tracks.length === 0) failures.push("missing tracks");
+
+    for (const track of tracks) {
+      const radios = [...track.querySelectorAll(".rt-cell-head input.rt-cell-select[type='radio']")];
+      const cells = [...track.querySelectorAll(".rt-cell")];
+      if (radios.length !== cells.length) {
+        failures.push("track has " + radios.length + " radio selectors for " + cells.length + " cells");
+        continue;
+      }
+      if (new Set(radios.map((radio) => radio.name)).size !== 1) {
+        failures.push("track radios are not one named group");
+      }
+      if (radios.filter((radio) => radio.checked).length !== 1) {
+        failures.push("track radio group does not have exactly one selected cell");
+      }
+      for (const radio of radios) {
+        const box = radio.getBoundingClientRect();
+        const style = getComputedStyle(radio);
+        if (box.width < 12 || box.height < 12 || style.display === "none" || style.visibility === "hidden" || style.opacity === "0") {
+          failures.push("cell selector radio is not visibly native-sized");
+        }
+        const headBox = radio.closest(".rt-cell-head")?.getBoundingClientRect();
+        if (!headBox || Math.abs((box.top + box.height / 2) - (headBox.top + headBox.height / 2)) > 1.5) {
+          failures.push("cell selector radio is not vertically centered in the header");
+        }
+      }
+    }
+
+    const firstTrackRadios = [...document.querySelectorAll(".rt-track:first-of-type .rt-cell-head input.rt-cell-select[type='radio']")];
+    if (firstTrackRadios.length >= 2) {
+      const next = firstTrackRadios.find((radio) => !radio.checked) || firstTrackRadios[1];
+      const groupName = next.name;
+      next.click();
+      const checked = [...document.querySelectorAll("input.rt-cell-select[type='radio'][name='" + CSS.escape(groupName) + "']")]
+        .filter((radio) => radio.checked);
+      if (checked.length !== 1 || checked[0] !== next) {
+        failures.push("clicking a cell radio did not update the mutually exclusive checked state");
+      }
+    } else {
+      failures.push("first track does not have enough radios for selection smoke");
+    }
+
+    const oldSelectButtons = [...document.querySelectorAll(".rt-cell-head button.rt-cell-select, .rt-cell-head button[title='Select cell'], .rt-cell-head button[aria-label='Select cell'], .rt-cell-head button[title='Selected cell'], .rt-cell-head button[aria-label='Selected cell']")];
+    if (oldSelectButtons.length > 0) {
+      failures.push("old eye select button still exists in cell headers");
+    }
+
+    for (const grip of document.querySelectorAll(".rt-drag-handle")) {
+      const circles = [...grip.querySelectorAll("svg circle")];
+      const lines = [...grip.querySelectorAll("svg line")];
+      const linePoints = lines.map((line) => [line.getAttribute("x1"), line.getAttribute("y1"), line.getAttribute("x2"), line.getAttribute("y2")].join(","));
+      const hasPauseLikeGlyph = linePoints.includes("9,5,9,19") && linePoints.includes("15,5,15,19");
+      if (circles.length !== 6) {
+        failures.push((grip.title || "drag handle") + " does not use a six-dot grip glyph");
+      }
+      if (hasPauseLikeGlyph) {
+        failures.push((grip.title || "drag handle") + " still uses the pause-like two-line glyph");
+      }
+      const gripBox = grip.getBoundingClientRect();
+      const svgBox = grip.querySelector("svg")?.getBoundingClientRect();
+      if (!svgBox || Math.abs((svgBox.left + svgBox.width / 2) - (gripBox.left + gripBox.width / 2)) > 1 || Math.abs((svgBox.top + svgBox.height / 2) - (gripBox.top + gripBox.height / 2)) > 1) {
+        failures.push((grip.title || "drag handle") + " glyph is not centered");
+      }
+    }
+
+    if (failures.length > 0) {
+      throw new Error("cell control cleanup failures: " + [...new Set(failures)].join("; "));
     }
   })()`);
 
