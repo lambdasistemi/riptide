@@ -2,15 +2,15 @@
 
 ## Slice A: Dry Playback Wiring
 
-- [ ] T017-S1 Add `Riptide.Playback` with playback backend operations and
+- [X] T017-S1 Add `Riptide.Playback` with playback backend operations and
   activation/silence orchestration over `Riptide.Session`.
-- [ ] T017-S1 Add a dry recording backend for tests and unconfigured runtime
+- [X] T017-S1 Add a dry recording backend for tests and unconfigured runtime
   behavior.
-- [ ] T017-S1 Add unit tests proving activate sends the interpreted active text
+- [X] T017-S1 Add unit tests proving activate sends the interpreted active text
   to the track slot, silence clears the track slot, and missing inputs do not
   crash.
-- [ ] T017-S1 Wire the new module/test into `riptide.cabal` and `test/Spec.hs`.
-- [ ] T017-S1 Run focused tests and `./gate.sh`, then commit one bisect-safe
+- [X] T017-S1 Wire the new module/test into `riptide.cabal` and `test/Spec.hs`.
+- [X] T017-S1 Run focused tests and `./gate.sh`, then commit one bisect-safe
   slice with `Tasks: T017-S1`.
 
 ## Slice B: Real Tidal Backend And Config
