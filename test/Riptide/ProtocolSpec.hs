@@ -47,10 +47,12 @@ genClientCommand = do
     track <- genTrackId
     text <- genTextId
     definition <- genDefinitionId
+    session <- genSession
     source <- genSourceText
     name <- genNameText
     elements
         [ ValidateText source
+        , SetSession session
         , ActivateTrackText track text
         , SilenceTrack track
         , SaveTrackText track text source

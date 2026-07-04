@@ -81,6 +81,7 @@ import Riptide.Session
 import Riptide.Store
     ( loadSession
     , saveDefinitions
+    , saveSession
     , saveTracks
     )
 import System.Environment (lookupEnv)
@@ -182,6 +183,16 @@ handleClientCommand server command =
     case command of
         ValidateText source ->
             validateText server source
+        SetSession clientSession ->
+            stateCommand server command $ \session -> do
+                let updated =
+                        session
+                            { sessionTracks = sessionTracks clientSession
+                            , sessionDefinitions =
+                                sessionDefinitions clientSession
+                            }
+                saveSession (serverStateDir server) updated
+                pure $ commandSucceeded updated
         ActivateTrackText trackIdent textIdent ->
             stateCommand server command $ \session -> do
                 let candidate = activateTrackText trackIdent textIdent session

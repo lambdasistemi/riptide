@@ -33,6 +33,7 @@ import Riptide.Session
 
 data ClientCommand
     = ValidateText Text
+    | SetSession Session
     | ActivateTrackText TrackId TextId
     | SilenceTrack TrackId
     | SaveTrackText TrackId TextId Text
@@ -46,6 +47,10 @@ instance ToJSON ClientCommand where
             tagged
                 "validateText"
                 ["text" .= source]
+        SetSession session ->
+            tagged
+                "setSession"
+                ["session" .= session]
         ActivateTrackText track text ->
             tagged
                 "activateTrackText"
@@ -82,6 +87,9 @@ instance FromJSON ClientCommand where
                 "validateText" ->
                     ValidateText
                         <$> value .: "text"
+                "setSession" ->
+                    SetSession
+                        <$> value .: "session"
                 "activateTrackText" ->
                     ActivateTrackText
                         <$> value .: "trackId"
