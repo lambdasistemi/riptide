@@ -12,6 +12,8 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Riptide.Model (App, ConnectionState(..), Page(..), Song, Toolbox, connectionLabel)
 import Riptide.Validation (authoritativeValidation)
+import Riptide.View.Icons (Icon(..))
+import Riptide.View.Icons as Icons
 
 type ShellActions action =
   { goSong :: action
@@ -43,19 +45,19 @@ render actions app child =
         , HH.div [ HP.classes [ HH.ClassName "rt-spacer" ] ] []
         , chipButton (scopeClasses app) (scopeLabel app) actions.goDefs
         , chipButton (engineClasses app) (connectionLabel app.connection) actions.toggleEngine
-        , HH.button [ HP.classes [ HH.ClassName "rt-hush" ], HE.onClick \_ -> actions.hush ] [ HH.text "Hush" ]
+        , Icons.iconButtonWithClasses "Stop everything" Hush [ HH.ClassName "rt-hush" ] actions.hush
         , HH.div [ HP.classes [ HH.ClassName "rt-active" ] ] [ HH.text (activeLabel app) ]
         ]
     , HH.div [ HP.classes [ HH.ClassName "rt-actions" ] ]
-        [ HH.button [ HE.onClick \_ -> actions.newSong ] [ HH.text "New song" ]
-        , HH.button [ HE.onClick \_ -> actions.newToolbox ] [ HH.text "New toolbox" ]
+        [ Icons.iconButton "New song" Add actions.newSong
+        , Icons.iconButton "New toolbox" Add actions.newToolbox
         , HH.div [ HP.classes [ HH.ClassName "rt-action-group" ] ]
-            [ HH.button [ HE.onClick \_ -> actions.exportSong ] [ HH.text "Export song" ]
-            , HH.button [ HE.onClick \_ -> actions.importSong ] [ HH.text "Import song" ]
+            [ Icons.iconButton "Export song" Download actions.exportSong
+            , Icons.iconButton "Import song" Upload actions.importSong
             ]
         , HH.div [ HP.classes [ HH.ClassName "rt-action-group" ] ]
-            [ HH.button [ HE.onClick \_ -> actions.exportToolbox ] [ HH.text "Export toolbox" ]
-            , HH.button [ HE.onClick \_ -> actions.importToolbox ] [ HH.text "Import toolbox" ]
+            [ Icons.iconButton "Export toolbox" Download actions.exportToolbox
+            , Icons.iconButton "Import toolbox" Upload actions.importToolbox
             ]
         ]
     , case app.toast of

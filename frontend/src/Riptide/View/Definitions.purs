@@ -13,6 +13,8 @@ import Halogen.HTML.Properties as HP
 import Riptide.Helpers (cascade)
 import Riptide.Model (App, Block, BlockId, EditingTarget, Toolbox, ToolboxId)
 import Riptide.Validation (ValidationResult, authoritativeValidation)
+import Riptide.View.Icons (Icon(..))
+import Riptide.View.Icons as Icons
 
 type DefinitionsActions action =
   { newToolbox :: action
@@ -36,7 +38,7 @@ render actions app =
     [ HH.div [ HP.classes [ HH.ClassName "rt-rail" ] ]
         [ HH.div [ HP.classes [ HH.ClassName "rt-rail-head" ] ]
             [ HH.div [ HP.classes [ HH.ClassName "rt-rail-title" ] ] [ HH.text "Toolboxes" ]
-            , iconButton "New toolbox" "+" actions.newToolbox
+            , Icons.iconButton "New toolbox" Add actions.newToolbox
             ]
         , HH.div [ HP.classes [ HH.ClassName "rt-rail-meta" ] ] [ HH.text (toolboxRailMeta app) ]
         , HH.div_ (map (toolboxRow actions app) app.toolboxes)
@@ -79,11 +81,11 @@ toolboxRow actions app toolbox =
           , HH.small_ [ HH.text (toolboxMeta app toolbox) ]
           ]
       , HH.div [ HP.classes [ HH.ClassName "rt-row-actions" ] ]
-          [ iconButton "Open toolbox" "open" (actions.openToolbox toolbox.id)
-          , iconButton "Rename toolbox" "rename" (actions.startEdit "tbx" toolbox.id)
-          , iconButton "Duplicate toolbox" "copy" (actions.duplicateToolbox toolbox.id)
-          , dangerButton (if confirming then "Confirm delete toolbox" else "Delete toolbox")
-              (if confirming then "confirm" else "delete")
+          [ Icons.iconButton "Open toolbox" Eye (actions.openToolbox toolbox.id)
+          , Icons.iconButton "Rename toolbox" Edit (actions.startEdit "tbx" toolbox.id)
+          , Icons.iconButton "Duplicate toolbox" Copy (actions.duplicateToolbox toolbox.id)
+          , Icons.dangerButton (if confirming then "Confirm delete toolbox" else "Delete toolbox")
+              (if confirming then Check else Delete)
               (actions.deleteToolbox toolbox.id)
           ]
       ]
@@ -98,17 +100,8 @@ toolboxShell actions app toolbox =
           ]
       , HH.div [ HP.classes [ HH.ClassName "rt-header-actions" ] ]
           [ HH.div [ HP.classes [ HH.ClassName "rt-count" ] ] [ HH.text (toolboxMeta app toolbox) ]
-          , HH.button
-              [ HP.type_ HP.ButtonButton
-              , HE.onClick \_ -> actions.addBlock
-              ]
-              [ HH.text "Add block" ]
-          , HH.button
-              [ HP.type_ HP.ButtonButton
-              , HP.disabled (not (canApplyAny app toolbox))
-              , HE.onClick \_ -> actions.applyAll
-              ]
-              [ HH.text "Apply all" ]
+          , Icons.iconButton "Add definition" Add actions.addBlock
+          , Icons.iconButtonDisabled "Apply all valid changes" Check (not (canApplyAny app toolbox)) actions.applyAll
           ]
       ]
   , if Array.null toolbox.blocks then
@@ -149,14 +142,9 @@ blockCard actions app block =
           , HH.span [ HP.classes [ HH.ClassName "rt-badge" ] ] [ HH.text (show impact.count <> " live uses") ]
           ]
       , HH.div [ HP.classes [ HH.ClassName "rt-block-actions" ] ]
-          [ HH.button
-              [ HP.type_ HP.ButtonButton
-              , HP.disabled (not canApply)
-              , HE.onClick \_ -> actions.applyBlock block.id
-              ]
-              [ HH.text "Apply" ]
-          , dangerButton (if confirming then "Confirm delete block" else "Delete block")
-              (if confirming then "confirm" else "delete")
+          [ Icons.iconButtonDisabled "Apply definition" Check (not canApply) (actions.applyBlock block.id)
+          , Icons.dangerButton (if confirming then "Confirm delete block" else "Delete block")
+              (if confirming then Check else Delete)
               (actions.deleteBlock block.id)
           ]
       , case result.error of
@@ -238,25 +226,6 @@ blockStateLabel result
   | result.empty = "empty"
   | result.valid = "valid"
   | otherwise = "invalid"
-
-iconButton :: forall action slots m. String -> String -> action -> HH.ComponentHTML action slots m
-iconButton title label action =
-  HH.button
-    [ HP.type_ HP.ButtonButton
-    , HP.title title
-    , HE.onClick \_ -> action
-    ]
-    [ HH.text label ]
-
-dangerButton :: forall action slots m. String -> String -> action -> HH.ComponentHTML action slots m
-dangerButton title label action =
-  HH.button
-    [ HP.type_ HP.ButtonButton
-    , HP.title title
-    , HP.classes [ HH.ClassName "rt-danger" ]
-    , HE.onClick \_ -> action
-    ]
-    [ HH.text label ]
 
 isEditing :: String -> String -> Maybe EditingTarget -> Boolean
 isEditing kind id =

@@ -203,6 +203,29 @@
         padding: 0 10px;
       }
 
+      .rt-icon-button {
+        width: 34px;
+        min-width: 34px;
+        height: 34px;
+        min-height: 34px;
+        display: inline-grid;
+        place-items: center;
+        padding: 0;
+        border-radius: 7px;
+        line-height: 1;
+      }
+
+      .rt-icon-button .rt-icon {
+        width: 18px;
+        height: 18px;
+        display: block;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
       button:disabled {
         opacity: 0.45;
         cursor: not-allowed;
@@ -261,11 +284,8 @@
       }
 
       .rt-hush {
-        padding: 0 16px;
         color: oklch(0.12 0.01 25);
-        font-size: 11px;
         font-weight: 600;
-        letter-spacing: 1.5px;
         border-color: oklch(0.56 0.14 25);
       }
 
@@ -285,7 +305,6 @@
       }
 
       .rt-actions button {
-        padding: 0 12px;
         background: transparent;
         color: oklch(0.62 0.01 260);
         font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
@@ -594,7 +613,11 @@
         cursor: grab;
         color: oklch(0.5 0.01 260);
         background: transparent;
-        font-size: 10px;
+      }
+
+      .rt-drag-handle .rt-icon {
+        width: 15px;
+        height: 15px;
       }
 
       .rt-drag-handle:active {
@@ -630,6 +653,16 @@
         color: oklch(0.6 0.01 260);
         background: transparent;
         font-weight: 600;
+      }
+
+      .rt-cell-add .rt-icon {
+        width: 22px;
+        height: 22px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
       }
 
       .rt-cell-add.is-cell-append-drop {
