@@ -42,6 +42,7 @@ library
     Riptide
     Riptide.Eval
     Riptide.Playback
+    Riptide.Protocol
     Riptide.Session
     Riptide.Store
 
@@ -73,10 +74,12 @@ test-suite unit-tests
   other-modules:
     Riptide.EvalSpec
     Riptide.PlaybackSpec
+    Riptide.ProtocolSpec
     Riptide.SessionSpec
     Riptide.StoreSpec
 
   build-depends:
+    , aeson
     , base        <5
     , directory
     , filepath

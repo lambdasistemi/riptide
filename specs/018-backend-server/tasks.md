@@ -2,13 +2,13 @@
 
 ## Slice 1 — Protocol Types And Round-Trips
 
-- [ ] T018-S1 Define `Riptide.Protocol` client command and server event JSON
+- [X] T018-S1 Define `Riptide.Protocol` client command and server event JSON
   types covering snapshot, validation, activation, silence, save track text,
   save definition, and apply definition.
-- [ ] T018-S1 Add cabal exposure and test-suite wiring for protocol tests.
-- [ ] T018-S1 Add QuickCheck encode/decode round-trip properties for protocol
+- [X] T018-S1 Add cabal exposure and test-suite wiring for protocol tests.
+- [X] T018-S1 Add QuickCheck encode/decode round-trip properties for protocol
   commands and events.
-- [ ] T018-S1 Run the focused protocol test command and commit the slice.
+- [X] T018-S1 Run the focused protocol test command and commit the slice.
 
 ## Slice 2 — Server Command Dispatch
 
