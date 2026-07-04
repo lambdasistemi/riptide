@@ -26,6 +26,7 @@ module Riptide.Reducer
   , openSong
   , openToolbox
   , paintEnter
+  , playbackCommandsForActiveTransitions
   , removeCell
   , removeTrack
   , renameBlock
@@ -64,6 +65,7 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Riptide.Action (ControlKey(..))
 import Riptide.Helpers (effectiveSelected, normalizeScore)
 import Riptide.Model (App, Block, BlockId, Cell, CellId, ConnectionState, Page(..), Song, SongId, Toolbox, ToolboxId, Track, TrackId, defaultBlock, defaultCell, defaultSong, defaultToolbox, defaultTrack, totalBars)
+import Riptide.Protocol.Client as Protocol
 import Riptide.Validation (AuthoritativeValidation, authoritativeValidation, recordAuthoritativeValidation)
 import Riptide.WebSocket (WebSocketClient)
 
@@ -103,6 +105,24 @@ recordBackendValidation result app =
 hush :: App -> App
 hush =
   mapCurrentSongTracks \track -> track { active = Nothing }
+
+playbackCommandsForActiveTransitions :: Array Track -> Array Track -> Array Protocol.ClientCommand
+playbackCommandsForActiveTransitions before after =
+  Array.mapMaybe commandFor after
+  where
+  commandFor track =
+    let
+      oldActive = activeFor track.id before
+    in
+      if oldActive == track.active then
+        Nothing
+      else
+        case track.active of
+          Just cellId -> Just (Protocol.ActivateTrackText track.id cellId)
+          Nothing -> Just (Protocol.SilenceTrack track.id)
+
+  activeFor trackId tracks =
+    fromMaybe Nothing (_.active <$> Array.find (_.id >>> (_ == trackId)) tracks)
 
 toggleCell :: TrackId -> CellId -> App -> App
 toggleCell trackId cellId =
