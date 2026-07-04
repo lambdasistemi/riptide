@@ -4,6 +4,7 @@ module Main
 
 import Riptide (banner)
 import Riptide.Eval (interpretControlPattern)
+import Riptide.Server (runServerFromEnvironment)
 import System.Environment (getArgs)
 
 main :: IO ()
@@ -11,6 +12,7 @@ main = do
     args <- getArgs
     case args of
         ("eval" : rest) -> evalCommand (unwords rest)
+        ["serve"] -> runServerFromEnvironment
         _ -> putStrLn banner
 
 {- | Interpret a Tidal expression from the command line, for smoke-testing the

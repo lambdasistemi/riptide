@@ -18,10 +18,13 @@ import Riptide.Protocol
     , ValidationResult (..)
     )
 import Riptide.Server
-    ( ServerState
+    ( ServerConfig (..)
+    , ServerConfigError (..)
+    , ServerState
     , currentSession
     , handleClientCommand
     , newServerState
+    , readServerConfigFrom
     )
 import Riptide.Session
     ( DefinitionBlock (..)
@@ -56,7 +59,58 @@ import Test.Hspec
     )
 
 spec :: Spec
-spec =
+spec = do
+    describe "Riptide.Server config" $ do
+        it "uses local defaults when the environment is unset" $ do
+            config <- readServerConfigFrom $ const $ pure Nothing
+
+            config
+                `shouldBe` Right
+                    ServerConfig
+                        { serverHost = "127.0.0.1"
+                        , serverPort = 3000
+                        , serverFrontendDir = "frontend/dist"
+                        , serverStateDirectory = ".riptide-state"
+                        , serverSlotCapacity = 16
+                        }
+
+        it
+            "reads configured host, port, frontend dir, state dir, and slot capacity"
+            $ do
+                config <-
+                    readServerConfigFrom $
+                        envLookup
+                            [ ("RIPTIDE_HOST", "0.0.0.0")
+                            , ("RIPTIDE_PORT", "4321")
+                            , ("RIPTIDE_FRONTEND_DIR", "dist")
+                            , ("RIPTIDE_STATE_DIR", "state")
+                            , ("RIPTIDE_SLOT_CAPACITY", "32")
+                            ]
+
+                config
+                    `shouldBe` Right
+                        ServerConfig
+                            { serverHost = "0.0.0.0"
+                            , serverPort = 4321
+                            , serverFrontendDir = "dist"
+                            , serverStateDirectory = "state"
+                            , serverSlotCapacity = 32
+                            }
+
+        it "reports an invalid port as a recoverable config error" $ do
+            config <-
+                readServerConfigFrom $
+                    envLookup [("RIPTIDE_PORT", "not-a-port")]
+
+            config `shouldBe` Left (InvalidServerPort "not-a-port")
+
+        it "reports an invalid slot capacity as a recoverable config error" $ do
+            config <-
+                readServerConfigFrom $
+                    envLookup [("RIPTIDE_SLOT_CAPACITY", "not-a-capacity")]
+
+            config `shouldBe` Left (InvalidSlotCapacity "not-a-capacity")
+
     describe "Riptide.Server command dispatch" $ do
         it "validates basic Tidal text" $
             withServer trackSession $ \server _ _ -> do
@@ -252,3 +306,7 @@ withTempDir =
 
 (&) :: a -> (a -> b) -> b
 (&) value f = f value
+
+envLookup :: [(String, String)] -> String -> IO (Maybe String)
+envLookup vars name =
+    pure $ lookup name vars

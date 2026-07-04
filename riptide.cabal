@@ -49,13 +49,19 @@ library
 
   build-depends:
     , aeson
-    , base       <5
+    , base            <5
+    , bytestring
     , directory
     , filepath
     , hint
     , process
     , text
     , tidal
+    , wai
+    , wai-app-static
+    , wai-websockets
+    , warp
+    , websockets
 
 executable riptide
   import:         warnings, language
