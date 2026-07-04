@@ -3,11 +3,12 @@ module Riptide.SessionSpec
     ) where
 
 import Data.List (nub)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Riptide.Session
-    ( DefinitionId (..)
-    , DefinitionBlock (..)
+    ( DefinitionBlock (..)
+    , DefinitionId (..)
     , Session (..)
     , Slot (..)
     , TextId (..)
@@ -73,11 +74,9 @@ spec = do
                                     expectationFailure
                                         "expected recycled slot"
                                 Just withHat -> do
-                                    fmap trackSlot
-                                        (sessionTracks withSnare)
+                                    (trackSlot <$> sessionTracks withSnare)
                                         `shouldBe` [Slot 1, Slot 2]
-                                    fmap trackSlot
-                                        (sessionTracks withHat)
+                                    (trackSlot <$> sessionTracks withHat)
                                         `shouldBe` [Slot 2, Slot 1]
 
         it "keeps selected text when an active text is silenced" $ do
@@ -132,7 +131,8 @@ spec = do
                             (TextId "a")
                             "sound \"hh\""
 
-            fmap trackTextSource
+            fmap
+                trackTextSource
                 (firstTrack session >>= firstText)
                 `shouldBe` Just "sound \"hh\""
 
@@ -144,8 +144,8 @@ spec = do
         prop "live track slots are unique after add/remove sequences" $
             forAll genSlotSession $ \session ->
                 property $
-                    let slots = fmap trackSlot $ sessionTracks session
-                     in length slots == length (nub slots)
+                    let slots = trackSlot <$> sessionTracks session
+                    in  length slots == length (nub slots)
 
     describe "Riptide.Session definitions" $ do
         it "keeps editor code separate from applied code" $ do
@@ -165,11 +165,10 @@ spec = do
                     blockApplied block `shouldBe` ""
                     sessionDefinitions
                         (applyDefinitionBlock (DefinitionId "defs-a") session)
-                        `shouldBe`
-                            [ block
-                                { blockApplied = "let density = 4"
-                                }
-                            ]
+                        `shouldBe` [ block
+                                        { blockApplied = "let density = 4"
+                                        }
+                                   ]
                 _ -> expectationFailure "expected one definition block"
 
         it "removes one definition block while retaining siblings" $ do
@@ -216,8 +215,8 @@ trackSession =
         Nothing -> emptySession 4
 
 addText :: Text -> Text -> Session -> Session
-addText ident source =
-    addTrackText (TrackId "track-a") (TextId ident) source
+addText ident =
+    addTrackText (TrackId "track-a") (TextId ident)
 
 activate :: Text -> Session -> Session
 activate ident =
@@ -281,9 +280,8 @@ genSlotOp = do
 applySlotOp :: Session -> SlotOp -> Session
 applySlotOp session = \case
     AddTrack ident ->
-        case addTrack ident (trackIdText ident) session of
-            Just next -> next
-            Nothing -> session
+        fromMaybe session $
+            addTrack ident (trackIdText ident) session
     RemoveTrack ident ->
         removeTrack ident session
 

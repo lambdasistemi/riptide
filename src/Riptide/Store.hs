@@ -7,16 +7,15 @@ module Riptide.Store
     , saveTracks
     ) where
 
-{- |
-Module      : Riptide.Store
-Description : JSON persistence shell for riptide sessions.
-Copyright   : (c) Paolo Veronelli, 2026
-License     : BSD-3-Clause
-
-This module contains the impure persistence boundary for backend session state.
-Tracks and definition blocks are stored independently under a caller-provided
-state directory.
--}
+-- \|
+-- Module      : Riptide.Store
+-- Description : JSON persistence shell for riptide sessions.
+-- Copyright   : (c) Paolo Veronelli, 2026
+-- License     : BSD-3-Clause
+--
+-- This module contains the impure persistence boundary for backend session state.
+-- Tracks and definition blocks are stored independently under a caller-provided
+-- state directory.
 
 import Data.Aeson
     ( FromJSON
@@ -76,12 +75,12 @@ loadSession slotCapacity stateDir = do
             , sessionDefinitions = definitions
             }
 
-saveStore :: ToJSON a => FilePath -> a -> IO ()
+saveStore :: (ToJSON a) => FilePath -> a -> IO ()
 saveStore path value = do
     createDirectoryIfMissing True $ storeDirectory path
     encodeFile path value
 
-loadStore :: FromJSON a => FilePath -> IO [a]
+loadStore :: (FromJSON a) => FilePath -> IO [a]
 loadStore path = do
     exists <- doesFileExist path
     if exists
