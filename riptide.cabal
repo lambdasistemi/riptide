@@ -42,9 +42,13 @@ library
     Riptide
     Riptide.Eval
     Riptide.Session
+    Riptide.Store
 
   build-depends:
+    , aeson
     , base     <5
+    , directory
+    , filepath
     , hint
     , process
     , text
@@ -67,8 +71,11 @@ test-suite unit-tests
   main-is:        Spec.hs
   other-modules:
     Riptide.SessionSpec
+    Riptide.StoreSpec
   build-depends:
     , base        <5
+    , directory
+    , filepath
     , hspec
     , QuickCheck
     , riptide
