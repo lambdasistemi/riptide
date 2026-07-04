@@ -43,6 +43,7 @@ library
     Riptide.Eval
     Riptide.Playback
     Riptide.Protocol
+    Riptide.Server
     Riptide.Session
     Riptide.Store
 
@@ -75,6 +76,7 @@ test-suite unit-tests
     Riptide.EvalSpec
     Riptide.PlaybackSpec
     Riptide.ProtocolSpec
+    Riptide.ServerSpec
     Riptide.SessionSpec
     Riptide.StoreSpec
 

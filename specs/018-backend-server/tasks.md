@@ -12,14 +12,14 @@
 
 ## Slice 2 — Server Command Dispatch
 
-- [ ] T018-S2 Define `Riptide.Server` server state/config and a socket-free
+- [X] T018-S2 Define `Riptide.Server` server state/config and a socket-free
   command handler around the existing session reducers, store functions, eval,
   and playback backend.
-- [ ] T018-S2 Add command dispatch tests using dry playback and temporary store
+- [X] T018-S2 Add command dispatch tests using dry playback and temporary store
   directories.
-- [ ] T018-S2 Ensure successful state-changing commands broadcast/surface a
+- [X] T018-S2 Ensure successful state-changing commands broadcast/surface a
   fresh snapshot and persist the relevant stores.
-- [ ] T018-S2 Run the focused server test command and commit the slice.
+- [X] T018-S2 Run the focused server test command and commit the slice.
 
 ## Slice 3 — Warp/Websocket Serve Mode
 
