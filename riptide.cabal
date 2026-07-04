@@ -54,6 +54,7 @@ library
     , directory
     , filepath
     , hint
+    , http-types
     , process
     , text
     , tidal
@@ -89,10 +90,16 @@ test-suite unit-tests
   build-depends:
     , aeson
     , base        <5
+    , bytestring
     , directory
     , filepath
     , hspec
+    , http-types
     , QuickCheck
     , riptide
     , text
     , tidal
+    , wai
+    , wai-extra
+    , warp
+    , websockets
